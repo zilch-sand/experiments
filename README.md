@@ -168,5 +168,5 @@ for dirname, _ in subdirs_with_dates:
         if note_added:
             readme_path.write_text('\n'.join(new_lines))
 
-]]]]-->
+]]]-->
 ## 0 research projects
