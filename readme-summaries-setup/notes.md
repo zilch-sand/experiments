@@ -1,0 +1,3 @@
+- Created this folder to capture follow-up details on how README summaries are generated.
+- Reviewed the repository workflow and README cog block to understand the model + auth path.
+- Plan: document the flow, required tokens, and whether Copilot is needed in README.md.
