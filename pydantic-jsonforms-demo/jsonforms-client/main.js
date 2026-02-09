@@ -1,30 +1,11 @@
 import React, { useEffect, useMemo, useState } from "https://esm.sh/react@18";
 import { createRoot } from "https://esm.sh/react-dom@18/client";
-import { JsonForms } from "https://esm.sh/@jsonforms/react@3.3.0";
-import { vanillaCells, vanillaRenderers } from "https://esm.sh/@jsonforms/vanilla-renderers@3.3.0";
+import { JsonForms } from "https://esm.sh/@jsonforms/react@3.7.0";
+import { materialCells, materialRenderers } from "https://esm.sh/@jsonforms/material-renderers";
 
-const API_BASE = "http://localhost:8000";
+const h = React.createElement;
 
-const uiSchema = {
-  type: "VerticalLayout",
-  elements: [
-    {
-      type: "Group",
-      label: "Portfolio",
-      elements: [
-        { type: "Control", scope: "#/properties/meta/properties/title" },
-        { type: "Control", scope: "#/properties/meta/properties/owner_email" },
-        { type: "Control", scope: "#/properties/meta/properties/created_on" },
-        { type: "Control", scope: "#/properties/meta/properties/visibility" }
-      ]
-    },
-    {
-      type: "Group",
-      label: "Projects",
-      elements: [{ type: "Control", scope: "#/properties/projects" }]
-    }
-  ]
-};
+const API_BASE = "http://127.0.0.1:8000";
 
 const initialData = {
   meta: {
@@ -52,14 +33,20 @@ const initialData = {
 
 function App() {
   const [schema, setSchema] = useState(null);
+  const [uiSchema, setUiSchema] = useState(null);
   const [data, setData] = useState(initialData);
   const [errors, setErrors] = useState([]);
   const [apiStatus, setApiStatus] = useState({ state: "idle", message: "" });
 
   useEffect(() => {
-    fetch(`${API_BASE}/schema`)
-      .then((response) => response.json())
-      .then((payload) => setSchema(payload))
+    Promise.all([
+      fetch(`${API_BASE}/schema`).then((response) => response.json()),
+      fetch(`${API_BASE}/ui-schema`).then((response) => response.json())
+    ])
+      .then(([schemaPayload, uiSchemaPayload]) => {
+        setSchema(schemaPayload);
+        setUiSchema(uiSchemaPayload);
+      })
       .catch((error) => {
         setApiStatus({
           state: "error",
@@ -68,7 +55,10 @@ function App() {
       });
   }, []);
 
-  const canValidate = useMemo(() => schema !== null, [schema]);
+  const canValidate = useMemo(() => schema !== null && uiSchema !== null, [
+    schema,
+    uiSchema
+  ]);
 
   const handleValidate = async () => {
     setApiStatus({ state: "loading", message: "Validating..." });
@@ -80,8 +70,23 @@ function App() {
       });
       const payload = await response.json();
       if (!response.ok) {
-        setApiStatus({ state: "error", message: "Validation failed." });
-        setErrors(payload.detail ?? []);
+        const detail = payload?.detail;
+        const detailMessage = Array.isArray(detail)
+          ? detail
+              .map((item) => {
+                const path = Array.isArray(item?.loc)
+                  ? item.loc.join(".")
+                  : "payload";
+                const msg = item?.msg ?? "Invalid value";
+                return `${path}: ${msg}`;
+              })
+              .join("\n")
+          : detail || payload?.message;
+        setApiStatus({
+          state: "error",
+          message: detailMessage ? `Validation failed: ${detailMessage}` : "Validation failed."
+        });
+        setErrors(detail ?? []);
         return;
       }
       setApiStatus({ state: "success", message: payload.message });
@@ -91,43 +96,49 @@ function App() {
     }
   };
 
-  if (!schema) {
-    return (
-      <div className="panel">
-        <p>Loading schema from {API_BASE}/schema...</p>
-        {apiStatus.message && <p className="status">{apiStatus.message}</p>}
-      </div>
+  if (!schema || !uiSchema) {
+    return h(
+      "div",
+      { className: "panel" },
+      h("p", null, `Loading schema from ${API_BASE}/schema...`),
+      apiStatus.message ? h("p", { className: "status" }, apiStatus.message) : null
     );
   }
 
-  return (
-    <>
-      <div className="panel">
-        <JsonForms
-          schema={schema}
-          uischema={uiSchema}
-          data={data}
-          renderers={vanillaRenderers}
-          cells={vanillaCells}
-          onChange={({ data: nextData, errors: nextErrors }) => {
-            setData(nextData);
-            setErrors(nextErrors ?? []);
-          }}
-        />
-        <button onClick={handleValidate} disabled={!canValidate}>
-          Validate with API
-        </button>
-        {apiStatus.message && <p className="status">{apiStatus.message}</p>}
-      </div>
-      <div className="panel">
-        <h2>Current JSON</h2>
-        <pre>{JSON.stringify(data, null, 2)}</pre>
-        <h2>JSONForms Errors</h2>
-        <pre>{JSON.stringify(errors, null, 2)}</pre>
-      </div>
-    </>
+  return h(
+    React.Fragment,
+    null,
+    h(
+      "div",
+      { className: "panel" },
+      h(JsonForms, {
+        schema,
+        uischema: uiSchema,
+        data,
+        renderers: materialRenderers,
+        cells: materialCells,
+        onChange: ({ data: nextData, errors: nextErrors }) => {
+          setData(nextData);
+          setErrors(nextErrors ?? []);
+        }
+      }),
+      h(
+        "button",
+        { onClick: handleValidate, disabled: !canValidate },
+        "Validate with API"
+      ),
+      apiStatus.message ? h("p", { className: "status" }, apiStatus.message) : null
+    ),
+    h(
+      "div",
+      { className: "panel" },
+      h("h2", null, "Current JSON"),
+      h("pre", null, JSON.stringify(data, null, 2)),
+      h("h2", null, "JSONForms Errors"),
+      h("pre", null, JSON.stringify(errors, null, 2))
+    )
   );
 }
 
 const root = createRoot(document.getElementById("root"));
-root.render(<App />);
+root.render(h(App));

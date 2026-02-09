@@ -9,3 +9,13 @@
 - Added CORS middleware for the JSONForms client running on localhost:8001.
 - Updated README with JSONForms client demo instructions.
 - Updated README install command to include email-validator via pydantic[email].
+- Replaced JSX in jsonforms-client/main.js with React.createElement to run in the browser without a build step.
+- Expanded JSONForms UI schema to include project meta fields inside the projects array detail view.
+- Moved JSONForms UI schema into schema.py and added a /ui-schema endpoint.
+- Updated the client to fetch UI schema from the FastAPI backend.
+- Ensured model validation errors are JSON-serializable to prevent 500s on completed status without end_date.
+- Added JSONForms rule to show end_date only when status is completed.
+- Fixed "No applicable cell found" errors by flattening nullable anyOf schemas in JSON Schema output. JSONForms vanilla renderers don't handle anyOf well for nullable typed fields (e.g., `date | None`), so added a post-processing function to convert `{"anyOf": [{"type": "x"}, {"type": "null"}]}` into just `{"type": "x"}`.
+- **Upgraded to Material UI renderers**: Replaced vanilla renderers with `@jsonforms/material-renderers` for much better out-of-the-box styling. Material UI provides professional-looking form controls with proper spacing, typography, and interactive states.
+- Enhanced page styling with gradient background, improved shadows, better button styling with hover effects, and responsive layout for mobile devices.
+

@@ -1,4 +1,4 @@
-Start by creating a new folder for your work with an appropriate name.
+If starting a new experiment, start by creating a new folder for your work with an appropriate name. If still iterating on an existing experiment, you can keep working in the same folder, but make sure to update your notes.md file with the new work you are doing and any new insights you are gaining.
 
 Create a notes.md file in that folder and append notes to it as you work, tracking what you tried and anything you learned along the way.
 
@@ -14,3 +14,5 @@ Your final commit should include just that folder and selected items from its co
 Do NOT include full copies of code that you fetched as part of your investigation. Your final commit should include only new files you created or diffs showing changes you made to existing code.
 
 Don't create a _summary.md file - these are added automatically after you commit your changes.
+
+Use context7 MCP to get docs for libraries you are using when required. 
