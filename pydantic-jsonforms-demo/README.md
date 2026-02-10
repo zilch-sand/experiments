@@ -34,8 +34,9 @@ If you want the user to choose the number up front (e.g., â€œCreate 3 projectsâ€
 ## Running the API
 
 ```bash
-pip install fastapi uvicorn "pydantic[email]"
-uvicorn app:app --reload
+cd pydantic-jsonforms-demo
+uv add install fastapi uvicorn "pydantic[email]"
+uv run uvicorn app:app --reload
 ```
 
 The API exposes:
@@ -59,6 +60,7 @@ uvicorn app:app --reload
 Install dependencies + run the Vite client in another terminal (port `5173`):
 
 ```bash
+cd pydantic-jsonforms-demo
 cd jsonforms-client
 npm install
 npm run dev
