@@ -16,3 +16,6 @@ Do NOT include full copies of code that you fetched as part of your investigatio
 Don't create a _summary.md file - these are added automatically after you commit your changes.
 
 Use context7 MCP to get docs for libraries you are using when required. 
+
+If using python for the experiment, use `uv` to manage the environment and dependencies. Setup a new environment for the experiment inside the experiment folder and install any dependencies you need. This will ensure that your experiment is self-contained and reproducible. 
+

@@ -18,4 +18,6 @@
 - Fixed "No applicable cell found" errors by flattening nullable anyOf schemas in JSON Schema output. JSONForms vanilla renderers don't handle anyOf well for nullable typed fields (e.g., `date | None`), so added a post-processing function to convert `{"anyOf": [{"type": "x"}, {"type": "null"}]}` into just `{"type": "x"}`.
 - **Upgraded to Material UI renderers**: Replaced vanilla renderers with `@jsonforms/material-renderers` for much better out-of-the-box styling. Material UI provides professional-looking form controls with proper spacing, typography, and interactive states.
 - Enhanced page styling with gradient background, improved shadows, better button styling with hover effects, and responsive layout for mobile devices.
-
+- Rebuilt the JSONForms client as a Vite + React + MUI app, mirroring the jsonforms-react-seed structure (App, Header, JsonFormsDemo, theme provider).
+- Added a schema-loading/validation flow that still pulls JSON Schema + UI schema from FastAPI, plus API validation status feedback and error panel.
+- Added a simple SVG logo and refreshed layout to match the React seed styling.

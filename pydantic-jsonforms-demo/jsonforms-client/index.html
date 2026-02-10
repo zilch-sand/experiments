@@ -2,96 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Portfolio JSONForms Demo</title>
-    <!-- Material-UI Fonts -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <style>
-      body {
-        font-family: "Roboto", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        padding: 2rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-      }
-      h1 {
-        color: white;
-        margin: 0 0 0.5rem 0;
-        font-weight: 500;
-      }
-      body > p {
-        color: rgba(255, 255, 255, 0.9);
-        margin: 0 0 2rem 0;
-      }
-      #root {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-        gap: 2rem;
-      }
-      .panel {
-        background: white;
-        padding: 2rem;
-        border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      }
-      .panel h2 {
-        margin-top: 0;
-        color: #333;
-        font-weight: 500;
-        font-size: 1.25rem;
-      }
-      pre {
-        white-space: pre-wrap;
-        word-break: break-word;
-        background: #1e293b;
-        color: #e2e8f0;
-        padding: 1.25rem;
-        border-radius: 8px;
-        font-size: 0.875rem;
-        line-height: 1.5;
-        overflow-x: auto;
-      }
-      button {
-        background: #667eea;
-        color: white;
-        padding: 0.75rem 1.5rem;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-        font-weight: 500;
-        margin-top: 1.5rem;
-        transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-      }
-      button:hover:not(:disabled) {
-        background: #5568d3;
-        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
-        transform: translateY(-1px);
-      }
-      button:disabled {
-        background: #cbd5e1;
-        cursor: not-allowed;
-        box-shadow: none;
-      }
-      .status {
-        margin-top: 1rem;
-        padding: 0.75rem;
-        border-radius: 6px;
-        font-weight: 500;
-      }
-      @media (max-width: 1024px) {
-        #root {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pydantic + JSONForms Portfolio</title>
   </head>
   <body>
-    <h1>Portfolio JSONForms Demo</h1>
-    <p>Loads JSON Schema from FastAPI, renders the form, and validates via POST /validate.</p>
     <div id="root"></div>
-    <script type="module" src="./main.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
