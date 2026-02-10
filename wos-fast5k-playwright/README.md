@@ -19,20 +19,42 @@ This experiment provides a Playwright script that automates downloading Web of S
 
 - `download_wos_fast5k.js`
 
-## Prerequisites
+## Windows setup & run
 
-- Node.js 18+
-- Playwright installed in your environment:
+This script uses `page.pause()` (Playwright Inspector) so you can manually log in before automation continues. That’s simplest in a normal Windows desktop session.
 
-```bash
+### 1) Install Node.js
+
+- Install Node.js 18+ (LTS) from https://nodejs.org/
+- Or via `winget` (PowerShell):
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+```
+
+### 2) Install Playwright + Chromium
+
+From a PowerShell prompt in this folder:
+
+```powershell
 npm i -D playwright
 npx playwright install chromium
 ```
 
-## Usage
+### 3) Run
 
-```bash
-node download_wos_fast5k.js --base-name "wos_topic_export"
+```powershell
+node .\download_wos_fast5k.js --base-name "wos_topic_export" --headless false
+```
+
+Downloads are saved under `./downloads/` (on Windows you'll see this as `downloads\\`).
+
+If you ever need a non-interactive run (no Inspector/UI), you can pass `--headless true` **but** you'll also need to remove or guard the `await page.pause();` line in `download_wos_fast5k.js`.
+
+## Usage (PowerShell)
+
+```powershell
+node .\download_wos_fast5k.js --base-name "wos_topic_export"
 ```
 
 Optional flags:

@@ -143,8 +143,8 @@ async function setRangeAndFileName(page, { start, end, baseName, index, timeoutM
       .first();
 
     if ((await fileNameInput.count()) > 0) {
-      const seq = String(index + 1).padStart(3, '0');
-      await fileNameInput.fill(`${baseName}_${seq}`);
+      const seq = String(index + 1);
+      await fileNameInput.fill(`${baseName} ${seq}`);
     }
   }
 }
