@@ -16,13 +16,50 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
 
+function loadDotEnv(dotEnvPath) {
+  // Minimal .env loader (avoids adding npm deps). Values are only loaded if the
+  // variable is not already defined in the environment.
+  try {
+    if (!fs.existsSync(dotEnvPath)) return;
+    const raw = fs.readFileSync(dotEnvPath, 'utf8');
+    const lines = raw.split(/\r?\n/);
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+
+      const noExport = trimmed.startsWith('export ') ? trimmed.slice('export '.length) : trimmed;
+      const eqIdx = noExport.indexOf('=');
+      if (eqIdx <= 0) continue;
+
+      const key = noExport.slice(0, eqIdx).trim();
+      if (!key) continue;
+
+      let val = noExport.slice(eqIdx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+
+      if (process.env[key] == null || process.env[key] === '') {
+        process.env[key] = val;
+      }
+    }
+  } catch (err) {
+    console.warn(`Warning: failed to load .env from ${dotEnvPath}: ${err.message}`);
+  }
+}
+
 function parseArgs(argv) {
   const args = {
     headless: false,
     batchSize: 5000,
     baseName: '',
-    timeoutMs: 30_000,
+    timeoutMs: 60_000,
     slowMo: 100,
+    autoLogin: true,
+    autoSearch: true,
+    searchFile: 'searchstring.sql',
+    pauseAfterLogin: false,
   };
 
   for (let i = 2; i < argv.length; i += 1) {
@@ -31,16 +68,48 @@ function parseArgs(argv) {
       args.headless = argv[i + 1] !== 'false';
       i += 1;
     } else if (arg === '--batch-size') {
-      args.batchSize = Number(argv[i + 1]);
+      const val = Number(argv[i + 1]);
+      if (Number.isFinite(val) && val > 0 && val <= 50000) {
+        args.batchSize = val;
+      } else {
+        throw new Error('--batch-size must be a positive number <= 50000');
+      }
       i += 1;
     } else if (arg === '--base-name') {
-      args.baseName = argv[i + 1] || '';
+      // Sanitize to prevent path traversal
+      const raw = argv[i + 1] || '';
+      args.baseName = path.basename(raw);
+      if (raw !== args.baseName && raw !== '') {
+        console.warn(`Warning: base-name sanitized from "${raw}" to "${args.baseName}"`);
+      }
       i += 1;
     } else if (arg === '--timeout-ms') {
-      args.timeoutMs = Number(argv[i + 1]);
+      const val = Number(argv[i + 1]);
+      if (Number.isFinite(val) && val >= 0 && val <= 300000) {
+        args.timeoutMs = val;
+      } else {
+        throw new Error('--timeout-ms must be a number between 0 and 300000');
+      }
       i += 1;
     } else if (arg === '--slow-mo') {
-      args.slowMo = Number(argv[i + 1]);
+      const val = Number(argv[i + 1]);
+      if (Number.isFinite(val) && val >= 0 && val <= 5000) {
+        args.slowMo = val;
+      } else {
+        throw new Error('--slow-mo must be a number between 0 and 5000');
+      }
+      i += 1;
+    } else if (arg === '--auto-login') {
+      args.autoLogin = argv[i + 1] !== 'false';
+      i += 1;
+    } else if (arg === '--auto-search') {
+      args.autoSearch = argv[i + 1] !== 'false';
+      i += 1;
+    } else if (arg === '--search-file') {
+      args.searchFile = argv[i + 1] || args.searchFile;
+      i += 1;
+    } else if (arg === '--pause-after-login') {
+      args.pauseAfterLogin = argv[i + 1] !== 'false';
       i += 1;
     }
   }
@@ -102,57 +171,233 @@ async function findTotalDocumentCount(page) {
   );
 }
 
-async function openFast5kDialog(page, timeoutMs) {
-  const exportBtn = page.getByRole('button', { name: /export/i }).first();
-  await exportBtn.waitFor({ timeout: timeoutMs });
-  await exportBtn.click();
+async function findTotalDocumentCountWithRecovery(page, { timeoutMs, headless }) {
+  // If the search string is invalid / not submitted / lands on an unexpected page,
+  // the total-count detection will fail. In headed mode, pause to let the user
+  // correct the query or navigate to results, then retry when they resume.
+  //
+  // In headless mode, pausing is not possible, so we fail fast with a clear message.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      return await findTotalDocumentCount(page);
+    } catch (err) {
+      const msg = err && err.message ? err.message : String(err);
+      if (headless) {
+        throw new Error(
+          `Failed to detect total document count in headless mode. Ensure the search ran and results are open. Details: ${msg}`,
+        );
+      }
 
-  const fast5kOption = page.getByRole('menuitem', { name: /fast\s*5k/i }).first();
-  if ((await fast5kOption.count()) > 0) {
-    await fast5kOption.click();
-    return;
-  }
+      console.warn(`Total document count not detected yet: ${msg}`);
+      console.log(
+        'Pausing so you can fix the search/query and navigate to the results list. When you click Play/Resume, I will retry total-count detection.',
+      );
+      await page.pause();
 
-  const fast5kButton = page.getByRole('button', { name: /fast\s*5k/i }).first();
-  if ((await fast5kButton.count()) > 0) {
-    await fast5kButton.click();
-    return;
-  }
+      // Small buffer after resume to let the UI settle.
+      await page.waitForTimeout(500);
 
-  const fast5kText = page.getByText(/fast\s*5k/i).first();
-  await fast5kText.click({ timeout: timeoutMs });
-}
-
-async function setRangeAndFileName(page, { start, end, baseName, index, timeoutMs }) {
-  const startInput = page
-    .locator('input[name*=start i], input[aria-label*=start i], input[id*=start i]')
-    .first();
-  const endInput = page
-    .locator('input[name*=end i], input[aria-label*=end i], input[id*=end i]')
-    .first();
-
-  await startInput.waitFor({ timeout: timeoutMs });
-  await endInput.waitFor({ timeout: timeoutMs });
-
-  await startInput.fill(String(start));
-  await endInput.fill(String(end));
-
-  if (baseName) {
-    const fileNameInput = page
-      .locator('input[name*=file i], input[aria-label*=file i], input[id*=file i], input[placeholder*=file i]')
-      .first();
-
-    if ((await fileNameInput.count()) > 0) {
-      const seq = String(index + 1);
-      await fileNameInput.fill(`${baseName} ${seq}`);
+      // Avoid hanging forever in cases where the page is still loading.
+      try {
+        await page.waitForLoadState('domcontentloaded', { timeout: timeoutMs });
+      } catch {
+        // ignore
+      }
     }
   }
 }
 
-async function exportSingleBatch(page, timeoutMs) {
-  const exportConfirm = page
-    .getByRole('button', { name: /^(export|download|submit)$/i })
-    .first();
+async function openFast5kDialog(page, timeoutMs) {
+  const exportBtn = page.getByRole('button', { name: 'Export', exact: true });
+  await exportBtn.waitFor({ timeout: timeoutMs });
+  await exportBtn.click();
+
+  const fastOption = page.getByRole('menuitem', { name: 'Fast' });
+  await fastOption.waitFor({ timeout: timeoutMs });
+  await fastOption.click();
+}
+
+async function acceptCookiesIfPresent(page, timeoutMs) {
+  // Startup wait so the cookie modal has time to render.
+  await page.waitForTimeout(5000);
+
+  const acceptAll = page.getByRole('button', { name: /Accept all/i });
+  try {
+    await acceptAll.waitFor({ timeout: Math.min(timeoutMs, 20_000) });
+    await acceptAll.click();
+    await page.waitForTimeout(500);
+    console.log('Accepted cookies.');
+  } catch {
+    // Not always shown (or already accepted).
+  }
+}
+
+async function signInIfPossible(page, { email, password }, timeoutMs) {
+  // If already signed in, there may be no sign-in button.
+  const signInBtn = page.getByRole('button', { name: /Sign\s*In/i });
+  if ((await signInBtn.count()) === 0) return;
+
+  await signInBtn.first().waitFor({ timeout: timeoutMs });
+  await signInBtn.first().click();
+
+  // Some tenants show a nested "Sign In" link in a menu.
+  const signInLink = page.locator('a').filter({ hasText: /Sign\s*In/i }).first();
+  if ((await signInLink.count()) > 0) {
+    await signInLink.click();
+  }
+
+  const emailInput = page.getByRole('textbox', { name: /Email address/i });
+  await emailInput.waitFor({ timeout: timeoutMs });
+  await emailInput.click();
+  await emailInput.fill(email);
+
+  let passwordInput = page.getByRole('textbox', { name: /Password/i });
+  if ((await passwordInput.count()) === 0) {
+    passwordInput = page.locator('input[type="password"]').first();
+  } else {
+    passwordInput = passwordInput.first();
+  }
+
+  await passwordInput.waitFor({ timeout: timeoutMs });
+  await passwordInput.fill(password);
+
+  const signInConfirm = page.getByRole('button', { name: /^Sign in$/i });
+  if ((await signInConfirm.count()) > 0) {
+    await signInConfirm.click();
+  } else {
+    // Fallback if button text differs slightly.
+    await page.getByRole('button', { name: /Sign in/i }).first().click();
+  }
+
+  // Give auth redirect a moment; different tenants vary.
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1000);
+}
+
+function readSearchStringFromFile(searchFilePath) {
+  try {
+    if (!fs.existsSync(searchFilePath)) return null;
+
+    // Read + normalize common formatter damage in-place.
+    // VS Code SQL formatters sometimes rewrite year ranges like:
+    //   FPY=2020-2024  ->  FPY = 2020 -2024
+    // which breaks WoS parsing (space before '-').
+    const originalRaw = fs.readFileSync(searchFilePath, 'utf8').replace(/^\uFEFF/, '');
+
+    // 1) Fix year ranges where a formatter inserts spaces around '-'
+    const fixedYearRanges = originalRaw.replace(
+      /\b(FPY|PY)\b(\s*=\s*)(\d{4})\s*-\s*(\d{4})\b/g,
+      '$1$2$3-$4',
+    );
+
+    // 2) Fix wildcard tokens where a formatter inserts a space before '*'
+    //    e.g. "energ *" -> "energ*". (We only remove the literal " *" sequence.)
+    const fixedWildcards = fixedYearRanges.replace(/ \*/g, '*');
+
+    if (fixedWildcards !== originalRaw) {
+      fs.writeFileSync(searchFilePath, fixedWildcards, 'utf8');
+      // Re-read to ensure we use exactly what is on disk.
+      const didYear = fixedYearRanges !== originalRaw;
+      const didStar = fixedWildcards !== fixedYearRanges;
+      const fixes = [didYear ? "year ranges" : null, didStar ? "wildcards" : null].filter(Boolean).join(' + ');
+      console.log(`Normalized ${fixes} in ${path.basename(searchFilePath)}.`);
+    }
+
+    const raw = fs.readFileSync(searchFilePath, 'utf8').replace(/^\uFEFF/, '');
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+
+    // WOS query parser ignores whitespace; collapsing keeps the query robust when filled into a textbox.
+    return trimmed.replace(/\s+/g, ' ').trim();
+  } catch (err) {
+    console.warn(`Warning: failed reading search string from ${searchFilePath}: ${err.message}`);
+    return null;
+  }
+}
+
+async function runAdvancedSearch(page, searchString, timeoutMs) {
+  const advancedSearchUrl = 'https://www.webofscience.com/wos/woscc/advanced-search';
+  const queryBox = page.getByRole('textbox', { name: /Query Preview/i });
+
+  try {
+    await queryBox.waitFor({ timeout: Math.min(timeoutMs, 10_000) });
+  } catch {
+    // If login redirected elsewhere, navigate back to Advanced Search.
+    await page.goto(advancedSearchUrl, { waitUntil: 'domcontentloaded' });
+    await queryBox.waitFor({ timeout: timeoutMs });
+  }
+
+  await queryBox.click();
+  await queryBox.fill(searchString);
+
+  // The recorder captured a tokenized URL; in practice the UI needs a submit action.
+  // Try Enter first, then fall back to a Search button if no navigation happens.
+  const beforeUrl = page.url();
+  try {
+    await queryBox.press('Enter');
+  } catch {
+    // ignore
+  }
+
+  await page.waitForTimeout(750);
+
+  if (page.url() === beforeUrl) {
+    const searchBtn = page.getByRole('button', { name: /^Search$/i });
+    if ((await searchBtn.count()) > 0) {
+      await searchBtn.first().click();
+    } else {
+      const searchBtnLoose = page.getByRole('button', { name: /Search/i });
+      if ((await searchBtnLoose.count()) > 0) {
+        await searchBtnLoose.first().click();
+      }
+    }
+  }
+
+  // Best-effort wait for results page elements. (Do not throw here; pause/manual steps can still fix it.)
+  try {
+    await page.getByRole('button', { name: 'Export', exact: true }).waitFor({ timeout: timeoutMs });
+    return true;
+  } catch {
+    return page.url() !== beforeUrl;
+  }
+}
+
+async function setRangeAndFileName(page, { start, end, baseName, index, timeoutMs }) {
+  const startInput = page.getByRole('spinbutton', { name: 'Input starting record range' });
+  const endInput = page.getByRole('spinbutton', { name: 'Input ending record range. A' });
+
+  await startInput.waitFor({ timeout: timeoutMs });
+  await endInput.waitFor({ timeout: timeoutMs });
+
+  await startInput.click();
+  await startInput.fill(String(start));
+  await startInput.press('Tab');
+  await endInput.fill(String(end));
+
+  // Note: some WoS tenants don't provide a filename input for Fast 5K export.
+  // We handle deterministic naming by choosing our own local filename in saveAs().
+  void baseName;
+  void index;
+}
+
+function buildOutputFilename({ suggested, baseName, index, totalBatches }) {
+  const parsed = path.parse(suggested);
+  const ext = (parsed.ext || '.txt').toLowerCase();
+  if (ext !== '.txt') {
+    throw new Error(`Invalid file type: expected .txt, got ${suggested}`);
+  }
+
+  const seq = String(index + 1);
+  const effectiveBase = (baseName && String(baseName).trim()) ? String(baseName).trim() : parsed.name;
+
+  // Ensure we don't accidentally create path segments.
+  const safeBase = path.basename(effectiveBase);
+  return `${safeBase} ${seq}${ext}`;
+}
+
+async function exportSingleBatch(page, { timeoutMs, index, totalBatches, baseName }) {
+  const exportConfirm = page.locator('#exportButton');
 
   await exportConfirm.waitFor({ timeout: timeoutMs });
 
@@ -161,13 +406,36 @@ async function exportSingleBatch(page, timeoutMs) {
     exportConfirm.click(),
   ]);
 
-  const suggested = download.suggestedFilename();
-  await download.saveAs(`./downloads/${suggested}`);
-  return suggested;
+  // Suggested names are often the same (e.g., savedrecs.txt) and can include browser
+  // suffixes like "(1)". We save to a deterministic sequential filename instead.
+  const suggested = path.basename(download.suggestedFilename());
+  const outputName = buildOutputFilename({
+    suggested,
+    baseName,
+    index,
+    totalBatches,
+  });
+
+  const savePath = path.resolve('./downloads', outputName);
+  await download.saveAs(savePath);
+  
+  // Validate file size (max 100MB)
+  const stats = fs.statSync(savePath);
+  const maxSize = 100 * 1024 * 1024;
+  if (stats.size > maxSize) {
+    fs.unlinkSync(savePath);
+    throw new Error(`File too large: ${stats.size} bytes (max ${maxSize})`);
+  }
+  
+  return outputName;
 }
 
 async function main() {
   const args = parseArgs(process.argv);
+
+  // Load environment variables from a local .env in this script folder.
+  // (Ignored by repo .gitignore.)
+  loadDotEnv(path.resolve(__dirname, '.env'));
 
   fs.mkdirSync(path.resolve('./downloads'), { recursive: true });
 
@@ -179,14 +447,46 @@ async function main() {
   const context = await browser.newContext({ acceptDownloads: true });
   const page = await context.newPage();
 
-  await page.goto('https://www.webofscience.com/wos/woscc/basic-search', {
+  await page.goto('https://www.webofscience.com/wos/woscc/advanced-search', {
     waitUntil: 'domcontentloaded',
   });
 
-  console.log('Please log in and open your search results page.');
-  await page.pause();
+  await acceptCookiesIfPresent(page, args.timeoutMs);
 
-  const total = await findTotalDocumentCount(page);
+  const email = process.env.WOS_EMAIL;
+  const password = process.env.WOS_PWD;
+  if (args.autoLogin && email && password) {
+    console.log('Attempting automated Sign In using WOS_EMAIL/WOS_PWD from .env...');
+    await signInIfPossible(page, { email, password }, args.timeoutMs);
+  } else {
+    console.log('Automated login not configured (set WOS_EMAIL and WOS_PWD in .env), continuing with manual login.');
+  }
+
+  if (args.autoSearch) {
+    const searchFilePath = path.isAbsolute(args.searchFile)
+      ? args.searchFile
+      : path.resolve(__dirname, args.searchFile);
+    const searchString = readSearchStringFromFile(searchFilePath);
+    if (searchString) {
+      console.log(`Applying SEARCH_STRING from ${path.basename(searchFilePath)} and submitting search...`);
+      const ok = await runAdvancedSearch(page, searchString, args.timeoutMs);
+      if (!ok) {
+        console.warn('Warning: search submit may not have completed. You can complete it manually in the paused browser.');
+      }
+    } else {
+      console.log(`No search string found at ${path.basename(searchFilePath)}; skipping auto-search.`);
+    }
+  }
+
+  if (args.pauseAfterLogin) {
+    console.log('Pausing (requested) — verify login/results page, then resume.');
+    await page.pause();
+  }
+
+  const total = await findTotalDocumentCountWithRecovery(page, {
+    timeoutMs: args.timeoutMs,
+    headless: args.headless,
+  });
   console.log(`Detected total documents: ${total}`);
 
   const ranges = batchRanges(total, args.batchSize);
@@ -210,10 +510,13 @@ async function main() {
       timeoutMs: args.timeoutMs,
     });
 
-    const fileName = await exportSingleBatch(page, args.timeoutMs);
+    const fileName = await exportSingleBatch(page, {
+      timeoutMs: args.timeoutMs,
+      index: i,
+      totalBatches: ranges.length,
+      baseName: args.baseName,
+    });
     console.log(`Downloaded: ${fileName}`);
-
-    await page.waitForTimeout(1500);
   }
 
   console.log('\nAll Fast 5K exports completed successfully.');
