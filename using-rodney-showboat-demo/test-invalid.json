@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "title": "Q2",
+    "owner_email": "not-an-email",
+    "created_on": "2024-06-01"
+  },
+  "projects": [
+    {
+      "meta": {
+        "name": "Project",
+        "status": "active",
+        "start_date": "2024-03-01",
+        "budget_usd": 250000
+      },
+      "summary": "Too short"
+    }
+  ]
+}

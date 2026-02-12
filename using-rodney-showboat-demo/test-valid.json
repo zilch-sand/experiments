@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "title": "Q2 Portfolio",
+    "owner_email": "owner@example.com",
+    "created_on": "2024-06-01",
+    "visibility": "team"
+  },
+  "projects": [
+    {
+      "meta": {
+        "name": "Analytics Revamp",
+        "status": "active",
+        "start_date": "2024-03-01",
+        "end_date": null,
+        "budget_usd": 250000,
+        "repo_url": "https://github.com/example/analytics",
+        "tags": ["data", "etl"]
+      },
+      "summary": "Modernize the analytics pipeline and dashboards.",
+      "contributors": ["Ada Lovelace", "Grace Hopper"]
+    }
+  ]
+}
