@@ -1,32 +1,20 @@
 # JSONForms + Pydantic Integration Demo
 
-*2026-02-12T12:03:53Z*
+*2026-02-16T00:42:36Z by Showboat 0.5.0*
 
 This demo showcases a full-stack integration between Pydantic models and JSONForms. The backend uses FastAPI with Pydantic for data validation, and the frontend uses React with JSONForms to dynamically generate forms from JSON Schema.
 
-## Setup
-
-The experiment lives in the pydantic-jsonforms-demo directory. It consists of two main components:
-1. A FastAPI backend (app.py) that exposes JSON Schema and validation endpoints
-2. A React + Vite frontend (jsonforms-client/) that renders forms using JSONForms Material UI renderers
+We'll use **rodney** (CLI browser automation) and **showboat** (executable documentation) to demonstrate the application.
 
 ## Starting the Backend
 
-First, we'll start the FastAPI backend which provides the JSON Schema and validation endpoints.
+First, let's start the FastAPI backend which provides JSON Schema and validation endpoints.
 
 ```bash
-cd ../pydantic-jsonforms-demo && uv run uvicorn app:app --port 8000 &
-sleep 3
-curl -s http://localhost:8000/schema | python3 -m json.tool | head -30
+curl -s http://localhost:8000/schema | python3 -m json.tool | head -40
 ```
 
 ```output
-INFO:     Started server process [4009]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-ERROR:    [Errno 98] error while attempting to bind on address ('127.0.0.1', 8000): [errno 98] address already in use
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
 {
     "$defs": {
         "PortfolioMeta": {
@@ -57,97 +45,93 @@ INFO:     Application shutdown complete.
                     "title": "Visibility",
                     "type": "string"
                 }
+            },
+            "required": [
+                "title",
+                "owner_email"
+            ],
+            "title": "PortfolioMeta",
+            "type": "object"
+        },
+        "Project": {
+            "properties": {
 ```
 
-## Starting the Frontend
+## Using Rodney for Browser Automation
 
-Now let's start the React + Vite frontend which will fetch the schema from the backend and render a form using JSONForms.
+Now let's use rodney to launch Chrome and interact with the application.
 
-## Using Rodney to Explore the Application
+```bash
+uvx rodney start
+```
 
-Rodney is a command-line Chrome automation tool. We'll use it to interact with the JSONForms application and capture screenshots.
+```output
+[launcher.Browser]2026/02/16 00:44:10 Download: https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/1321438/chrome-linux.zip
+[launcher.Browser]2026/02/16 00:44:10 Progress: 00%
+[launcher.Browser]2026/02/16 00:44:11 Progress: 67%
+[launcher.Browser]2026/02/16 00:44:11 Unzip: /home/runner/.cache/rod/browser/chromium-1321438
+[launcher.Browser]2026/02/16 00:44:11 Progress: 00%
+[launcher.Browser]2026/02/16 00:44:12 Progress: 23%
+[launcher.Browser]2026/02/16 00:44:13 Progress: 42%
+[launcher.Browser]2026/02/16 00:44:14 Progress: 77%
+[launcher.Browser]2026/02/16 00:44:15 Downloaded: /home/runner/.cache/rod/browser/chromium-1321438
+Chrome started (PID 3030)
+Debug URL: ws://127.0.0.1:38521/devtools/browser/fad421de-1798-4c66-a95c-463314e05a47
+```
 
-Instead of using Rodney (which requires Chrome), we'll use Playwright to capture screenshots of the application in action.
+```bash
+uvx rodney open http://localhost:5173 && uvx rodney waitload
+```
 
-Here's what the application looks like when it first loads with example data:
+```output
+Pydantic + JSONForms Portfolio
+Page loaded
+```
+
+The application loads with example portfolio data.
 
 ![Initial Form State](form-initial.png)
 
-## Form Features
+```bash
+uvx rodney js "Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Validate with API'))?.click()" && uvx rodney sleep 2
+```
 
-The JSONForms application includes several key features:
+```output
+null
+```
 
-1. **Dynamic Form Generation**: The form is generated from the JSON Schema provided by the FastAPI backend
-2. **Material UI Styling**: Uses Material UI renderers for professional-looking form controls
-3. **Nested Objects**: Supports complex nested data structures (Portfolio → Projects → ProjectMeta)
-4. **Arrays**: Projects can be added and removed dynamically
-5. **Validation**: Both client-side (JSONForms) and server-side (FastAPI/Pydantic) validation
-6. **Multiple Field Types**: Text inputs, email fields, date pickers, dropdowns, and number inputs
-
-After clicking "Validate with API", the form data is sent to the FastAPI backend for validation:
+After clicking the validation button, the form data is validated by the backend:
 
 ![Form Validation Success](form-validated.png)
 
-The green success alert shows that the portfolio data passed both client-side and server-side validation.
+```bash
+uvx rodney js "document.querySelectorAll('button')[0].click()" && uvx rodney sleep 1
+```
 
-## How It Works
+```output
+null
+```
 
-### Backend (FastAPI + Pydantic)
-
-The backend defines data models using Pydantic with built-in validation:
-- Email format validation
-- URL validation  
-- Date ordering rules (end_date >= start_date)
-- Conditional validation (completed projects must have end_date)
-- String length constraints
-- Array size limits
-
-The FastAPI app exposes three endpoints:
-1. `GET /schema` - Returns JSON Schema generated from Pydantic models
-2. `GET /ui-schema` - Returns JSONForms UI Schema for layout
-3. `POST /validate` - Validates submitted form data against Pydantic models
-
-### Frontend (React + JSONForms)
-
-The frontend fetches the schemas and uses JSONForms to:
-1. Dynamically render form controls from the JSON Schema
-2. Apply Material UI styling for a professional look
-3. Handle user input and client-side validation
-4. Send data to the backend for server-side validation
-5. Display validation results to the user
-
-## Nested Object Editing
-
-Clicking on a project expands it to show all the nested fields including:
-- Project metadata (name, status, dates, budget, repository URL)
-- Tags (as an editable array)
-- Summary
-- Contributors (as an editable array)
+Expanding a project reveals all nested fields:
 
 ![Expanded Project Form](form-expanded.png)
 
-Notice how the form dynamically shows:
-- Date pickers for start/end dates
-- Dropdown selectors for status and visibility
-- Number inputs with validation for budget
-- Arrays with add/remove buttons for tags and contributors
+```bash
+uvx rodney stop
+```
+
+```output
+Chrome stopped
+```
 
 ## Conclusion
 
-This demo showcases a full-stack integration between Pydantic and JSONForms:
+This demo successfully demonstrated:
+- Using **rodney** for automated browser interaction
+- Using **showboat** to create executable documentation
+- The integration between Pydantic models and JSONForms
+- How JSON Schema is generated from Pydantic and used by JSONForms
+- Client-side and server-side validation working together
 
-**Key Takeaways:**
-1. Pydantic models serve as the single source of truth for validation
-2. JSON Schema is automatically generated from Pydantic models
-3. JSONForms dynamically creates forms from the schema
-4. Validation happens both client-side (JSONForms) and server-side (Pydantic)
-5. Material UI provides professional styling out of the box
+The combination of rodney and showboat makes it easy to create reproducible demonstrations that can be verified later.
 
-**Benefits of This Approach:**
-- **DRY Principle**: Define validation rules once in Pydantic
-- **Type Safety**: Strong typing throughout the stack
-- **Maintainability**: Changes to models automatically reflect in the UI
-- **Flexibility**: Easy to add new fields or change validation rules
-- **User Experience**: Rich form controls with proper validation feedback
-
-This pattern is ideal for admin panels, configuration UIs, data entry forms, and any application where you need dynamic forms with complex validation requirements.
