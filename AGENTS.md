@@ -19,3 +19,4 @@ Use context7 MCP to get docs for libraries you are using when required.
 
 If using python for the experiment, use `uv` to manage the environment and dependencies. Setup a new environment for the experiment inside the experiment folder and install any dependencies you need. This will ensure that your experiment is self-contained and reproducible. 
 
+Use `showboat` to create a demo of your experiment in action. Run `uvx showboat --help` to undterstand how to use the tool. If the experiment involves a web page or app, use `rodney` to automate the web page. Run `uvx rodney --help` to understand how it works. 
