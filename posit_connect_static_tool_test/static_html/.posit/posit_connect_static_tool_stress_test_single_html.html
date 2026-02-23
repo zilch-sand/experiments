@@ -76,13 +76,27 @@
         <option value="https://api.github.com/zen">GitHub Zen (text)</option>
         <option value="https://worldtimeapi.org/api/ip">WorldTimeAPI (json)</option>
         <option value="https://httpbin.org/get">httpbin (json)</option>
+        <option value="https://raw.githubusercontent.com/vega/vega/master/docs/data/miserables.json">raw.githubusercontent.com (json sample)</option>
       </select>
       <div class="row" style="margin-top:8px;">
         <button id="btnFetch">Fetch</button>
         <span id="fetchStatus" class="pill">idle</span>
       </div>
       <pre id="fetchOut" class="small"></pre>
-      <div class="muted">If this fails, check browser devtools for blocked requests (CORS vs CSP vs network).</div>
+      <div class="muted">If this fails, check devtools for blocked requests (CSP vs network vs CORS).</div>
+    </div>
+
+    <div class="card">
+      <h2>3b) Same-origin proxy fetch (tests <code>connect-src 'self'</code>)</h2>
+      <div class="muted">This calls <code>/api/proxy?url=...</code> on the same origin. Pair it with the FastAPI snippet in the README.</div>
+      <label for="proxyUrl">Target URL (server-side fetch)</label>
+      <input id="proxyUrl" type="text" value="https://api.github.com/zen" />
+      <div class="row" style="margin-top:8px;">
+        <button id="btnProxy">Fetch via /api/proxy</button>
+        <span id="proxyStatus" class="pill">idle</span>
+      </div>
+      <pre id="proxyOut" class="small"></pre>
+      <div class="muted">If your CSP blocks external APIs, this should still work once the backend is running.</div>
     </div>
 
     <div class="card">
@@ -249,12 +263,57 @@
         const res = await fetch(url, {
           method: 'GET',
           headers: {
-            // Helps some APIs return predictable content
             'Accept': 'application/json, text/plain;q=0.9, */*;q=0.8'
           },
-          // mode:'cors' is default for cross-origin fetch
           cache: 'no-store'
         });
+
+        const ct = res.headers.get('content-type') || '';
+        let body;
+        if (ct.includes('application/json')) body = await res.json();
+        else body = await res.text();
+
+        setPill(fetchStatus, `ok (${res.status})`, true);
+        fetchOut.textContent = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+      } catch (e) {
+        setPill(fetchStatus, 'failed', false);
+        fetchOut.textContent = String(e);
+      }
+    });
+
+    // 3b) Same-origin proxy fetch
+    const proxyUrl = document.getElementById('proxyUrl');
+    const btnProxy = document.getElementById('btnProxy');
+    const proxyStatus = document.getElementById('proxyStatus');
+    const proxyOut = document.getElementById('proxyOut');
+
+    btnProxy.addEventListener('click', async () => {
+      setPill(proxyStatus, 'loading…', null);
+      proxyOut.textContent = '';
+      try {
+        const u = new URL('/api/proxy', window.location.origin);
+        u.searchParams.set('url', proxyUrl.value);
+
+        const res = await fetch(u.toString(), {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json, text/plain;q=0.9, */*;q=0.8'
+          },
+          cache: 'no-store'
+        });
+
+        const ct = res.headers.get('content-type') || '';
+        let body;
+        if (ct.includes('application/json')) body = await res.json();
+        else body = await res.text();
+
+        setPill(proxyStatus, `ok (${res.status})`, true);
+        proxyOut.textContent = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+      } catch (e) {
+        setPill(proxyStatus, 'failed', false);
+        proxyOut.textContent = String(e);
+      }
+    });
 
         const ct = res.headers.get('content-type') || '';
         let body;
@@ -417,6 +476,7 @@
       setPill(document.getElementById('urlStatus'), 'ready', true);
       setPill(document.getElementById('lsStatus'), 'ready', true);
       setPill(document.getElementById('fetchStatus'), 'ready', true);
+      setPill(document.getElementById('proxyStatus'), 'ready', true);
       setPill(document.getElementById('clipStatus'), 'ready', true);
       setPill(document.getElementById('cdnStatus'), window.DOMPurify ? 'ready' : 'cdn missing', !!window.DOMPurify);
       setPill(document.getElementById('workerStatus'), 'ready', true);
