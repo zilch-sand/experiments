@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connect Static Tool Stress Test</title>
+
+  <!-- Inline CSS (can be restricted by CSP if style-src disallows 'unsafe-inline') -->
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 20px; }
+    h1 { font-size: 20px; margin: 0 0 10px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .card { border: 1px solid rgba(128,128,128,.35); border-radius: 10px; padding: 12px; }
+    .card h2 { font-size: 14px; margin: 0 0 10px; }
+    label { display: block; font-size: 12px; opacity: 0.85; margin: 8px 0 4px; }
+    input[type="text"], textarea, select { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid rgba(128,128,128,.45); background: transparent; }
+    textarea { min-height: 90px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    button { padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(128,128,128,.45); background: transparent; cursor: pointer; }
+    button:hover { filter: brightness(1.05); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .muted { font-size: 12px; opacity: 0.75; }
+    .ok { color: #0a7; }
+    .bad { color: #c33; }
+    pre { white-space: pre-wrap; word-break: break-word; margin: 8px 0 0; }
+    .small { font-size: 12px; }
+    .pill { padding: 2px 8px; border: 1px solid rgba(128,128,128,.45); border-radius: 999px; font-size: 12px; }
+    .divider { height: 1px; background: rgba(128,128,128,.25); margin: 10px 0; }
+    iframe { width: 100%; height: 180px; border-radius: 10px; border: 1px solid rgba(128,128,128,.35); }
+  </style>
+
+  <!-- External CDN dependency (can be blocked by CSP: script-src) -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+</head>
+<body>
+  <h1>Posit Connect static tool stress-test</h1>
+  <div class="muted">
+    This single page intentionally uses patterns that often break under restrictive CSP / proxy setups:
+    inline JS, inline CSS, CDN scripts, public API fetch, localStorage, clipboard, Web Worker, iframe.
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1) Inline JS + URL state</h2>
+      <label for="q">Query string (saved to URL as <code>?q=...</code>)</label>
+      <input id="q" type="text" placeholder="Try typing here" />
+      <div class="row" style="margin-top:8px;">
+        <button id="btnSetUrl">Update URL</button>
+        <button id="btnReadUrl">Read URL</button>
+        <span id="urlStatus" class="pill">idle</span>
+      </div>
+      <pre id="urlOut" class="small"></pre>
+    </div>
+
+    <div class="card">
+      <h2>2) localStorage</h2>
+      <label for="lsKey">Key</label>
+      <input id="lsKey" type="text" value="connect_test_key" />
+      <label for="lsVal">Value</label>
+      <input id="lsVal" type="text" placeholder="Some text" />
+      <div class="row" style="margin-top:8px;">
+        <button id="btnLsSave">Save</button>
+        <button id="btnLsLoad">Load</button>
+        <button id="btnLsClear">Clear</button>
+        <span id="lsStatus" class="pill">idle</span>
+      </div>
+      <pre id="lsOut" class="small"></pre>
+    </div>
+
+    <div class="card">
+      <h2>3) Public API fetch (CORS + proxy + CSP <code>connect-src</code>)</h2>
+      <label for="api">Choose an API</label>
+      <select id="api">
+        <option value="https://api.github.com/zen">GitHub Zen (text)</option>
+        <option value="https://worldtimeapi.org/api/ip">WorldTimeAPI (json)</option>
+        <option value="https://httpbin.org/get">httpbin (json)</option>
+      </select>
+      <div class="row" style="margin-top:8px;">
+        <button id="btnFetch">Fetch</button>
+        <span id="fetchStatus" class="pill">idle</span>
+      </div>
+      <pre id="fetchOut" class="small"></pre>
+      <div class="muted">If this fails, check browser devtools for blocked requests (CORS vs CSP vs network).</div>
+    </div>
+
+    <div class="card">
+      <h2>4) Clipboard + file input</h2>
+      <label for="clip">Text to copy</label>
+      <input id="clip" type="text" value="hello from connect" />
+      <div class="row" style="margin-top:8px;">
+        <button id="btnCopy">Copy</button>
+        <button id="btnPaste">Paste</button>
+        <span id="clipStatus" class="pill">idle</span>
+      </div>
+      <label for="file">Pick a local file (reads first ~100KB)</label>
+      <input id="file" type="file" />
+      <pre id="clipOut" class="small"></pre>
+      <pre id="fileOut" class="small"></pre>
+      <div class="muted">Clipboard can be blocked unless HTTPS + user gesture + permissions.</div>
+    </div>
+
+    <div class="card">
+      <h2>5) CDN + DOM sanitization (script-src)</h2>
+      <label for="htmlIn">Untrusted HTML</label>
+      <textarea id="htmlIn"><img src=x onerror=alert('xss')> <b>bold</b> <a href="javascript:alert(1)">link</a></textarea>
+      <div class="row" style="margin-top:8px;">
+        <button id="btnSanitize">Sanitize & render</button>
+        <span id="cdnStatus" class="pill">idle</span>
+      </div>
+      <div id="renderBox" class="card" style="margin-top:10px; padding:10px;">
+        <div class="muted">Rendered output appears here.</div>
+      </div>
+      <div class="muted">If the CDN script is blocked, this will error and show as such.</div>
+    </div>
+
+    <div class="card">
+      <h2>6) Web Worker (worker-src)</h2>
+      <div class="muted">Creates a worker from a Blob URL. Some CSP setups block <code>blob:</code> workers.</div>
+      <label for="workN">Count to N</label>
+      <input id="workN" type="text" value="5000000" />
+      <div class="row" style="margin-top:8px;">
+        <button id="btnWorker">Run worker</button>
+        <button id="btnWorkerStop">Stop</button>
+        <span id="workerStatus" class="pill">idle</span>
+      </div>
+      <pre id="workerOut" class="small"></pre>
+    </div>
+
+    <div class="card" style="grid-column: 1 / -1;">
+      <h2>7) iframe embedding (frame-ancestors / X-Frame-Options)</h2>
+      <div class="muted">This tries to embed a well-known page. Many sites forbid iframing; your own Connect may also set frame restrictions.</div>
+      <div class="row" style="margin-top:8px;">
+        <input id="iframeUrl" type="text" value="https://example.com" />
+        <button id="btnIframe">Load</button>
+        <span id="iframeStatus" class="pill">idle</span>
+      </div>
+      <iframe id="frame" src="about:blank" referrerpolicy="no-referrer"></iframe>
+      <div class="muted">If it stays blank, check the console: it may be blocked by the target site or your platform headers.</div>
+    </div>
+  </div>
+
+  <!-- Inline JS (can be restricted by CSP: script-src 'unsafe-inline') -->
+  <script>
+    // Tiny helper
+    function setPill(el, text, ok) {
+      el.textContent = text;
+      el.classList.toggle('ok', !!ok);
+      el.classList.toggle('bad', ok === false);
+    }
+
+    // 1) URL state
+    const q = document.getElementById('q');
+    const btnSetUrl = document.getElementById('btnSetUrl');
+    const btnReadUrl = document.getElementById('btnReadUrl');
+    const urlStatus = document.getElementById('urlStatus');
+    const urlOut = document.getElementById('urlOut');
+
+    function readUrlQ() {
+      const u = new URL(window.location.href);
+      return u.searchParams.get('q') || '';
+    }
+    function writeUrlQ(val) {
+      const u = new URL(window.location.href);
+      if (val) u.searchParams.set('q', val);
+      else u.searchParams.delete('q');
+      history.replaceState(null, '', u.toString());
+    }
+
+    // Initialize from URL
+    q.value = readUrlQ();
+
+    btnSetUrl.addEventListener('click', () => {
+      try {
+        writeUrlQ(q.value);
+        setPill(urlStatus, 'updated', true);
+        urlOut.textContent = window.location.href;
+      } catch (e) {
+        setPill(urlStatus, 'error', false);
+        urlOut.textContent = String(e);
+      }
+    });
+
+    btnReadUrl.addEventListener('click', () => {
+      try {
+        const val = readUrlQ();
+        setPill(urlStatus, 'read', true);
+        urlOut.textContent = `q=${JSON.stringify(val)}`;
+      } catch (e) {
+        setPill(urlStatus, 'error', false);
+        urlOut.textContent = String(e);
+      }
+    });
+
+    // 2) localStorage
+    const lsKey = document.getElementById('lsKey');
+    const lsVal = document.getElementById('lsVal');
+    const btnLsSave = document.getElementById('btnLsSave');
+    const btnLsLoad = document.getElementById('btnLsLoad');
+    const btnLsClear = document.getElementById('btnLsClear');
+    const lsStatus = document.getElementById('lsStatus');
+    const lsOut = document.getElementById('lsOut');
+
+    btnLsSave.addEventListener('click', () => {
+      try {
+        localStorage.setItem(lsKey.value, lsVal.value);
+        setPill(lsStatus, 'saved', true);
+        lsOut.textContent = 'OK';
+      } catch (e) {
+        setPill(lsStatus, 'error', false);
+        lsOut.textContent = String(e);
+      }
+    });
+
+    btnLsLoad.addEventListener('click', () => {
+      try {
+        const v = localStorage.getItem(lsKey.value);
+        setPill(lsStatus, 'loaded', true);
+        lsOut.textContent = `Value: ${JSON.stringify(v)}`;
+      } catch (e) {
+        setPill(lsStatus, 'error', false);
+        lsOut.textContent = String(e);
+      }
+    });
+
+    btnLsClear.addEventListener('click', () => {
+      try {
+        localStorage.removeItem(lsKey.value);
+        setPill(lsStatus, 'cleared', true);
+        lsOut.textContent = 'OK';
+      } catch (e) {
+        setPill(lsStatus, 'error', false);
+        lsOut.textContent = String(e);
+      }
+    });
+
+    // 3) Fetch
+    const api = document.getElementById('api');
+    const btnFetch = document.getElementById('btnFetch');
+    const fetchStatus = document.getElementById('fetchStatus');
+    const fetchOut = document.getElementById('fetchOut');
+
+    btnFetch.addEventListener('click', async () => {
+      setPill(fetchStatus, 'loading…', null);
+      fetchOut.textContent = '';
+      const url = api.value;
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            // Helps some APIs return predictable content
+            'Accept': 'application/json, text/plain;q=0.9, */*;q=0.8'
+          },
+          // mode:'cors' is default for cross-origin fetch
+          cache: 'no-store'
+        });
+
+        const ct = res.headers.get('content-type') || '';
+        let body;
+        if (ct.includes('application/json')) body = await res.json();
+        else body = await res.text();
+
+        setPill(fetchStatus, `ok (${res.status})`, true);
+        fetchOut.textContent = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+      } catch (e) {
+        setPill(fetchStatus, 'failed', false);
+        fetchOut.textContent = String(e);
+      }
+    });
+
+    // 4) Clipboard + file input
+    const clip = document.getElementById('clip');
+    const btnCopy = document.getElementById('btnCopy');
+    const btnPaste = document.getElementById('btnPaste');
+    const clipStatus = document.getElementById('clipStatus');
+    const clipOut = document.getElementById('clipOut');
+    const fileIn = document.getElementById('file');
+    const fileOut = document.getElementById('fileOut');
+
+    btnCopy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(clip.value);
+        setPill(clipStatus, 'copied', true);
+        clipOut.textContent = 'OK';
+      } catch (e) {
+        setPill(clipStatus, 'copy blocked', false);
+        clipOut.textContent = String(e);
+      }
+    });
+
+    btnPaste.addEventListener('click', async () => {
+      try {
+        const t = await navigator.clipboard.readText();
+        setPill(clipStatus, 'pasted', true);
+        clipOut.textContent = t;
+      } catch (e) {
+        setPill(clipStatus, 'paste blocked', false);
+        clipOut.textContent = String(e);
+      }
+    });
+
+    fileIn.addEventListener('change', async () => {
+      const f = fileIn.files && fileIn.files[0];
+      if (!f) return;
+      try {
+        const buf = await f.arrayBuffer();
+        const max = Math.min(buf.byteLength, 100_000);
+        const slice = buf.slice(0, max);
+        const text = new TextDecoder('utf-8', { fatal: false }).decode(slice);
+        fileOut.textContent = `File: ${f.name} (${f.size} bytes)\n\nFirst ${max} bytes as UTF-8:\n${text}`;
+      } catch (e) {
+        fileOut.textContent = String(e);
+      }
+    });
+
+    // 5) CDN script test (DOMPurify)
+    const htmlIn = document.getElementById('htmlIn');
+    const btnSanitize = document.getElementById('btnSanitize');
+    const cdnStatus = document.getElementById('cdnStatus');
+    const renderBox = document.getElementById('renderBox');
+
+    btnSanitize.addEventListener('click', () => {
+      try {
+        if (!window.DOMPurify) throw new Error('DOMPurify not present (CDN blocked?)');
+        const clean = window.DOMPurify.sanitize(htmlIn.value, { USE_PROFILES: { html: true } });
+        renderBox.innerHTML = `<div class="muted small">Sanitized HTML:</div><pre class="small">${clean.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre><div class="muted small" style="margin-top:6px;">Rendered:</div><div>${clean}</div>`;
+        setPill(cdnStatus, 'ok', true);
+      } catch (e) {
+        setPill(cdnStatus, 'failed', false);
+        renderBox.textContent = String(e);
+      }
+    });
+
+    // 6) Worker
+    const workN = document.getElementById('workN');
+    const btnWorker = document.getElementById('btnWorker');
+    const btnWorkerStop = document.getElementById('btnWorkerStop');
+    const workerStatus = document.getElementById('workerStatus');
+    const workerOut = document.getElementById('workerOut');
+
+    let worker = null;
+    function stopWorker() {
+      if (worker) {
+        worker.terminate();
+        worker = null;
+        setPill(workerStatus, 'stopped', false);
+      }
+    }
+
+    btnWorker.addEventListener('click', () => {
+      stopWorker();
+      workerOut.textContent = '';
+      const n = Number(workN.value);
+      if (!Number.isFinite(n) || n <= 0) {
+        setPill(workerStatus, 'bad N', false);
+        return;
+      }
+
+      try {
+        const code = `
+          self.onmessage = (ev) => {
+            const N = ev.data.N;
+            let s = 0;
+            const t0 = Date.now();
+            for (let i=1; i<=N; i++) s += i;
+            const dt = Date.now() - t0;
+            self.postMessage({ sum: s, ms: dt, N });
+          };
+        `;
+        const blob = new Blob([code], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        worker = new Worker(url);
+        URL.revokeObjectURL(url);
+
+        worker.onmessage = (ev) => {
+          setPill(workerStatus, 'done', true);
+          workerOut.textContent = JSON.stringify(ev.data, null, 2);
+          stopWorker();
+        };
+        worker.onerror = (e) => {
+          setPill(workerStatus, 'worker error', false);
+          workerOut.textContent = String(e.message || e);
+          stopWorker();
+        };
+
+        setPill(workerStatus, 'running…', null);
+        worker.postMessage({ N: n });
+      } catch (e) {
+        setPill(workerStatus, 'blocked', false);
+        workerOut.textContent = String(e);
+      }
+    });
+
+    btnWorkerStop.addEventListener('click', stopWorker);
+
+    // 7) iframe
+    const iframeUrl = document.getElementById('iframeUrl');
+    const btnIframe = document.getElementById('btnIframe');
+    const iframeStatus = document.getElementById('iframeStatus');
+    const frame = document.getElementById('frame');
+
+    btnIframe.addEventListener('click', () => {
+      try {
+        const u = new URL(iframeUrl.value);
+        frame.src = u.toString();
+        setPill(iframeStatus, 'set', true);
+      } catch (e) {
+        setPill(iframeStatus, 'bad url', false);
+      }
+    });
+
+    // Quick self-checks
+    (function initChecks() {
+      // Inline script executed => basic CSP allows it.
+      // If you want a visible signal:
+      setPill(document.getElementById('urlStatus'), 'ready', true);
+      setPill(document.getElementById('lsStatus'), 'ready', true);
+      setPill(document.getElementById('fetchStatus'), 'ready', true);
+      setPill(document.getElementById('clipStatus'), 'ready', true);
+      setPill(document.getElementById('cdnStatus'), window.DOMPurify ? 'ready' : 'cdn missing', !!window.DOMPurify);
+      setPill(document.getElementById('workerStatus'), 'ready', true);
+      setPill(document.getElementById('iframeStatus'), 'ready', true);
+    })();
+  </script>
+</body>
+</html>
