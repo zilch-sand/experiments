@@ -1,193 +1,138 @@
 # Posit Connect static tool stress-test (single HTML)
 
-## Goal
+## What this is trying to do
 
-A single-page HTML file that intentionally uses common “static tool” patterns that can break on enterprise platforms (including Posit Connect behind SSO / reverse proxies) due to:
+This project is a practical compatibility check for hosting a single-file, browser-heavy HTML tool on Posit Connect.
 
-- Content Security Policy (CSP)
-- network/proxy egress restrictions
-- browser permissions (clipboard, storage)
-- sandboxing / embedding restrictions
+The core question is:
+**Can we host Simon-style static HTML tools on Connect, and what platform/security constraints matter in practice?**
 
-Use it to answer: **“Can I host Simon-style HTML tools on Connect and what will be restricted?”**
+It is intentionally built as a stress-test, not a polished app.
 
 ---
 
-## How to run
+## How it is deployed
 
-1. Save the HTML as `connect_static_stress_test.html`.
-2. Host it:
-   - on Posit Connect (your preferred “static content” method), and/or
-   - locally (open the file, or serve with a tiny static server).
-3. Open browser DevTools:
-   - **Console**: CSP/CORS/permission errors will show here.
-   - **Network**: confirm requests/scripts are actually loading.
-4. Click through each section and note what passes/fails.
+Recommended setup is one FastAPI deployment that serves both:
 
-**Tip:** Most “it works locally but not on Connect” failures are CSP headers injected by Connect or a proxy in front of it.
+- UI: `GET /` (or `/index.html`)
+- Proxy API: `GET /api/proxy?url=...`
 
----
+When deployed on Connect, both routes live under the same content path (for example `/content/<guid>/...`).
+The UI defaults the proxy endpoint to `api/proxy` so it stays path-relative.
 
-## What we’re testing
+Implementation:
 
-### Baseline: inline script + inline style
-The page includes inline `<style>` and inline `<script>`.
-
-**Tests**
-- CSP `script-src` allowing inline scripts (via `'unsafe-inline'` or nonces/hashes)
-- CSP `style-src` allowing inline styles
-
-**Failure symptoms**
-- Buttons do nothing / page feels inert
-- Console shows CSP violations referencing inline scripts/styles
+- API app: `fastapi_proxy/app.py`
+- HTML UI: `static_html/posit_connect_static_tool_stress_test_single_html.html`
 
 ---
 
-## Test modules
+## What we test and why
 
-### 1) Inline JS + URL state
-**What it does**
-- Reads `?q=...` from the URL on load and populates an input.
-- “Update URL” uses `history.replaceState()` to update `?q=` without reloading.
-- “Read URL” re-parses the URL and prints `q`.
+Each module maps to a real enterprise failure mode:
 
-**Tests**
-- Basic JS execution
-- URL state manipulation
+1. **Inline script + style**
+  - Tests whether CSP allows inline JavaScript/CSS.
+  - Why: many single-file tools rely on inline blocks.
 
-**Common failures**
-- Rare if inline JS is permitted.
+2. **URL state (`history.replaceState`)**
+  - Tests basic client-side state behavior.
+  - Why: lightweight tools often encode state in query params.
 
----
+3. **`localStorage`**
+  - Tests browser storage under deployed origin.
+  - Why: simple persistence without backend.
 
-### 2) `localStorage`
-**What it does**
-- Save / load / clear a key/value pair in `localStorage`.
+4. **Cross-origin public API fetch**
+  - Tests browser CORS + CSP `connect-src` + egress constraints.
+  - Why: many tools pull external data directly from the browser.
 
-**Tests**
-- Whether persistent storage is allowed under the site origin
+5. **Clipboard + file input APIs**
+  - Tests browser permission-gated APIs and local file read behavior.
+  - Why: user workflows often involve copy/paste and uploading files.
 
-**Common failures**
-- Storage blocked by browser privacy settings
-- Storage blocked in certain embedded/sandboxed contexts
+6. **CDN script load (DOMPurify)**
+  - Tests third-party script loading under CSP/network policy.
+  - Why: static tools commonly depend on CDN-hosted libraries.
 
----
+7. **Web Worker from `blob:` URL**
+  - Tests `worker-src` and `blob:` allowance.
+  - Why: offloading heavier computation to workers is common.
 
-### 3) Public API fetch (cross-origin)
-**What it does**
-Calls one of:
-- `https://api.github.com/zen` (text)
-- `https://worldtimeapi.org/api/ip` (JSON)
-- `https://httpbin.org/get` (JSON)
-
-Displays HTTP status + response body.
-
-**Tests**
-- CORS for cross-origin requests
-- CSP `connect-src` restrictions
-- Network/proxy allowlists and DNS egress
-
-**Failure symptoms**
-- Console: `Refused to connect ... because it violates the document's Content Security Policy`
-- Console: `Blocked by CORS policy`
-- Network: request never leaves / ERR_* failures / 403 via proxy
+8. **`iframe` embedding**
+  - Tests frame restrictions (`X-Frame-Options`, `frame-src`, `frame-ancestors`).
+  - Why: tools may need to embed external pages or dashboards.
 
 ---
 
-### 4) Clipboard + File input
+## What works
 
-#### Clipboard
-**What it does**
-- “Copy”: `navigator.clipboard.writeText()`
-- “Paste”: `navigator.clipboard.readText()`
+In this environment, core in-page/browser-local functionality is generally viable:
 
-**Tests**
-- HTTPS + permission gating + “user gesture” requirements
-- Whether clipboard APIs are blocked by policy
+- Inline JS and page interactions (assuming current CSP allows inline execution)
+- URL read/update behavior
+- Local browser features like `localStorage` (subject to browser/privacy mode)
+- File input reading
 
-**Failure symptoms**
-- Errors like `NotAllowedError` (permissions / gesture)
-- Works in some browsers but not others
-
-#### File input
-**What it does**
-- Reads the first ~100KB of a chosen local file via `File.arrayBuffer()` + `TextDecoder`.
-
-**Tests**
-- Local file handling APIs
-
-**Failure symptoms**
-- Rare; usually works unless the environment is heavily sandboxed.
+These are usually stable because they stay within the page origin and do not require external network access.
 
 ---
 
-### 5) CDN script load + DOM sanitization
-**What it does**
-- Loads **DOMPurify** via CDN:  
-  `https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js`
-- Lets you paste “untrusted HTML”, sanitizes it, and renders the safe result.
+## What does not work (and why)
 
-**Tests**
-- CSP `script-src` allowing third-party origins (jsDelivr)
-- Network egress to the CDN
-- Whether external scripts are blocked by proxy/security
+### Direct external API calls from the browser
 
-**Failure symptoms**
-- `DOMPurify not present (CDN blocked?)`
-- Console CSP errors about `script-src`
-- Network tab shows the CDN request blocked/failed
+Direct calls to endpoints like `https://api.github.com/zen` were blocked by CSP (`connect-src`).
 
-**Note**
-- This experiment intentionally does **not** use SRI (`integrity=`). A bad SRI hash will make the script fail even locally and would confound results.
+Why this fails:
 
----
+- Browser is enforcing page CSP headers from Connect/proxy.
+- External domains are not in allowed `connect-src` list.
+- Even when DNS/network is reachable, CSP can still block before request completion.
 
-### 6) Web Worker from `blob:` URL
-**What it does**
-- Creates a worker from a Blob URL (`blob:`) and runs a simple “sum 1..N” computation.
+### External iframe embedding (for generic URLs)
 
-**Tests**
-- CSP `worker-src`
-- Whether `blob:` is allowed for workers (sometimes blocked)
-- Worker execution in the environment
+Embedding `https://example.com` in an iframe was blocked due to frame policy restrictions.
 
-**Failure symptoms**
-- Console CSP error referencing `worker-src` or `blob:`
-- Worker fails immediately / “blocked”
+Why this fails:
+
+- `frame-src` restrictions on the host page and/or
+- target-site anti-framing headers (`X-Frame-Options` / `frame-ancestors`).
 
 ---
 
-### 7) `iframe` embedding
-**What it does**
-- Attempts to embed a URL in an `<iframe>` (default `https://example.com`).
+## Why the API proxy is needed
 
-**Tests**
-- Target site framing headers (`X-Frame-Options` / `Content-Security-Policy: frame-ancestors`)
-- Any platform-level restrictions on framing
+The proxy exists to move external fetches from **browser-side cross-origin requests** to a **same-origin app request**:
 
-**Failure symptoms**
-- Blank iframe
-- Console errors like:
-  - “Refused to display … in a frame because it set ‘X-Frame-Options’…”
-  - CSP `frame-ancestors` violations
+1. Browser calls `GET /api/proxy?url=...` on the same deployment origin.
+2. Server performs outbound HTTP request.
+3. Server returns response back to UI.
 
----
+This helps because:
 
-## Interpreting results quickly
+- Browser CORS restrictions no longer apply to the external target (browser only talks to same origin).
+- Browser `connect-src` can remain narrow (`'self'`) while still enabling controlled external access via backend.
+- Access control, allowlisting, logging, and sanitization can be centralized server-side.
 
-- **Inline script/style failures** → CSP is strict (no `'unsafe-inline'` / missing nonces).
-- **CDN script fails** → CSP `script-src` doesn’t allow CDN, or egress/proxy blocks it.
-- **Fetch fails** → CSP `connect-src` and/or proxy egress and/or CORS.
-- **Worker fails** → CSP `worker-src` (often needs `blob:` allowed).
-- **Clipboard fails** → browser permission / HTTPS / user gesture policies.
+Important caveat: server-side egress policies still apply. If Connect/network policy blocks outbound traffic, proxy calls can still fail.
 
 ---
 
-## Results
+## Quick usage
 
-Rount 1:
-**Failures**:
-- External APIs failed due to CSP restrictions. 
-`Connecting to 'https://api.github.com/zen' violates the following Content Security Policy directive: "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://posit-dev.github.io https://raw.githubusercontent.com https://*.mapbox.com https://cdn.plot.ly https://cdn.quarto.org https://tile.openstreetmap.org https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://*.csiro.au". The action has been blocked.`
-- iframe embedding failed due to CSP.
-`Framing 'https://example.com/' violates the following Content Security Policy directive: "frame-src 'self' https://login.microsoftonline.com https://storymaps.arcgis.com". The request has been blocked.`
+1. Deploy or run `fastapi_proxy/app.py`.
+2. Open the app root (`/`).
+3. Keep **Proxy endpoint** as `api/proxy` for same-deployment mode.
+4. Use browser DevTools:
+  - **Console** for CSP/CORS/permission errors
+  - **Network** to verify which requests are blocked vs completed
+
+---
+
+## Bottom line
+
+Single-file static tools are feasible on Connect for local/browser-native behavior.
+The main limitations are external network access and iframe embedding, both commonly constrained by CSP/security policy.
+For external data access, a same-deployment proxy API is the reliable pattern.

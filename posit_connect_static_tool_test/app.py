@@ -2,14 +2,30 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi.responses import FileResponse
 import httpx
+from pathlib import Path
 
 app = FastAPI(title="Connect Proxy Test")
+
+BASE_DIR = Path(__file__).resolve().parent
+HTML_FILE = BASE_DIR / "static" / "index.html"
+
+
+@app.get("/")
+async def index():
+    if not HTML_FILE.exists():
+        raise HTTPException(status_code=500, detail=f"HTML file not found: {HTML_FILE}")
+    return FileResponse(HTML_FILE, media_type="text/html")
+
+
+@app.get("/index.html")
+async def index_html():
+    return await index()
 
 # Optional: keep this permissive for testing, then lock it down later.
 ALLOWED_HOSTS = {
     "api.github.com",
-    "worldtimeapi.org",
     "httpbin.org",
     "raw.githubusercontent.com",
 }
@@ -30,7 +46,7 @@ async def proxy(url: str = Query(..., description="Absolute URL to fetch server-
         raise HTTPException(status_code=403, detail=f"Host not allowed: {host}")
 
     # Fetch server-side (CSP does not apply here)
-    timeout = httpx.Timeout(connect=10.0, read=20.0)
+    timeout = httpx.Timeout(20.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         try:
             r = await client.get(str(u), headers={"User-Agent": "connect-proxy-test/1.0"})

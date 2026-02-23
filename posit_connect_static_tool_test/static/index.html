@@ -74,7 +74,6 @@
       <label for="api">Choose an API</label>
       <select id="api">
         <option value="https://api.github.com/zen">GitHub Zen (text)</option>
-        <option value="https://worldtimeapi.org/api/ip">WorldTimeAPI (json)</option>
         <option value="https://httpbin.org/get">httpbin (json)</option>
         <option value="https://raw.githubusercontent.com/vega/vega/master/docs/data/miserables.json">raw.githubusercontent.com (json sample)</option>
       </select>
@@ -88,11 +87,13 @@
 
     <div class="card">
       <h2>3b) Same-origin proxy fetch (tests <code>connect-src 'self'</code>)</h2>
-      <div class="muted">This calls <code>/api/proxy?url=...</code> on the same origin. Pair it with the FastAPI snippet in the README.</div>
+      <div class="muted">Default uses this deployment's <code>api/proxy</code>. For separate deployments, use the full URL (for example another Connect content URL ending in <code>/api/proxy</code>).</div>
+      <label for="proxyEndpoint">Proxy endpoint</label>
+      <input id="proxyEndpoint" type="text" value="api/proxy" />
       <label for="proxyUrl">Target URL (server-side fetch)</label>
       <input id="proxyUrl" type="text" value="https://api.github.com/zen" />
       <div class="row" style="margin-top:8px;">
-        <button id="btnProxy">Fetch via /api/proxy</button>
+        <button id="btnProxy">Fetch via proxy endpoint</button>
         <span id="proxyStatus" class="pill">idle</span>
       </div>
       <pre id="proxyOut" class="small"></pre>
@@ -118,7 +119,7 @@
     <div class="card">
       <h2>5) CDN + DOM sanitization (script-src)</h2>
       <label for="htmlIn">Untrusted HTML</label>
-      <textarea id="htmlIn"><img src=x onerror=alert('xss')> <b>bold</b> <a href="javascript:alert(1)">link</a></textarea>
+      <textarea id="htmlIn">&lt;img src=x onerror=alert('xss')&gt; &lt;b&gt;bold&lt;/b&gt; &lt;a href="javascript:alert(1)"&gt;link&lt;/a&gt;</textarea>
       <div class="row" style="margin-top:8px;">
         <button id="btnSanitize">Sanitize & render</button>
         <span id="cdnStatus" class="pill">idle</span>
@@ -282,6 +283,7 @@
     });
 
     // 3b) Same-origin proxy fetch
+    const proxyEndpoint = document.getElementById('proxyEndpoint');
     const proxyUrl = document.getElementById('proxyUrl');
     const btnProxy = document.getElementById('btnProxy');
     const proxyStatus = document.getElementById('proxyStatus');
@@ -291,7 +293,10 @@
       setPill(proxyStatus, 'loading…', null);
       proxyOut.textContent = '';
       try {
-        const u = new URL('/api/proxy', window.location.origin);
+        // Supports either absolute URLs (separate deployment) or relative paths.
+        const endpoint = (proxyEndpoint.value || '').trim();
+        if (!endpoint) throw new Error('Proxy endpoint is required');
+        const u = new URL(endpoint, window.location.href);
         u.searchParams.set('url', proxyUrl.value);
 
         const res = await fetch(u.toString(), {
@@ -312,19 +317,6 @@
       } catch (e) {
         setPill(proxyStatus, 'failed', false);
         proxyOut.textContent = String(e);
-      }
-    });
-
-        const ct = res.headers.get('content-type') || '';
-        let body;
-        if (ct.includes('application/json')) body = await res.json();
-        else body = await res.text();
-
-        setPill(fetchStatus, `ok (${res.status})`, true);
-        fetchOut.textContent = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
-      } catch (e) {
-        setPill(fetchStatus, 'failed', false);
-        fetchOut.textContent = String(e);
       }
     });
 
