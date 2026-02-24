@@ -1,0 +1,76 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to commit generated docs back
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for commit dates)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install markdown
+
+      - name: Build site
+        run: sh build.sh
+
+      # ── Optional: generate LLM descriptions ──────────────────────────────
+      # Uncomment this step and add ANTHROPIC_API_KEY to your repo secrets
+      # to automatically generate .docs.md summaries using Claude Haiku.
+      #
+      # - name: Install LLM tools
+      #   run: pip install llm llm-anthropic>=0.20
+      #
+      # - name: Generate LLM docs
+      #   env:
+      #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      #     GENERATE_LLM_DOCS: "1"
+      #   run: python write_docs.py
+      #
+      # - name: Commit generated docs if changed
+      #   run: |
+      #     git config user.name "Automated"
+      #     git config user.email "actions@users.noreply.github.com"
+      #     git add '*.docs.md'
+      #     git diff --staged --quiet || git commit -m "Auto-generated docs" && git push
+      # ─────────────────────────────────────────────────────────────────────
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
