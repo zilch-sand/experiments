@@ -150,9 +150,8 @@ class AudioRecorder:
             sf.write(path, stereo, sample_rate, format="OGG", subtype="VORBIS")
         elif fmt == "MP3":
             ffmpeg = cls._require_ffmpeg()
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                temp_wav = tmp.name
-            try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                temp_wav = os.path.join(tmpdir, "tmp_audio.wav")
                 sf.write(temp_wav, stereo, sample_rate, format="WAV", subtype="PCM_16")
                 cmd = [
                     ffmpeg,
@@ -172,11 +171,6 @@ class AudioRecorder:
                 if result.returncode != 0:
                     stderr = (result.stderr or "").strip()
                     raise RuntimeError(f"ffmpeg failed during MP3 export. {stderr}")
-            finally:
-                try:
-                    os.remove(temp_wav)
-                except OSError:
-                    pass
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
 
@@ -214,19 +208,25 @@ class AudioRecorder:
         self._sys_chunks = []
         self._push_status("Starting streams...")
 
+        mic_info = sd.query_devices(mic_device_index)
+        mic_channels = max(1, min(2, int(mic_info["max_input_channels"])))
+
         mic_kwargs = dict(
             device=mic_device_index,
             samplerate=self.sample_rate,
-            channels=2,
+            channels=mic_channels,
             dtype="float32",
             blocksize=self.blocksize,
             callback=self._mic_callback,
         )
 
+        sys_info = sd.query_devices(incoming_device_index)
+        sys_channels = max(1, min(2, int(sys_info["max_input_channels"])))
+
         sys_kwargs = dict(
             device=incoming_device_index,
             samplerate=self.sample_rate,
-            channels=2,
+            channels=sys_channels,
             dtype="float32",
             blocksize=self.blocksize,
             callback=self._sys_callback,
@@ -254,7 +254,8 @@ class AudioRecorder:
         if not self._recording:
             raise RuntimeError("Not currently recording")
 
-        self._recording = False
+        with self._lock:
+            self._recording = False
         self._cleanup_streams()
 
         # Snapshot chunks and configuration under lock to avoid races with callbacks.
@@ -490,6 +491,12 @@ class RecorderApp:
         current = self.path_var.get().strip()
         fmt = self.format_var.get().upper()
         desired_ext = FORMAT_EXTENSIONS[fmt]
+        if fmt == "MP3" and not shutil.which("ffmpeg"):
+            messagebox.showwarning(
+                APP_TITLE,
+                "MP3 export requires ffmpeg on your PATH.\n"
+                "Install ffmpeg or choose a different format.",
+            )
         if not current:
             self.path_var.set(str(self._default_output_path(fmt)))
             return
@@ -578,7 +585,7 @@ class RecorderApp:
         for msg in self.recorder.pop_status_messages():
             self.status_var.set(msg)
             self._append_log(msg)
-        self.root.after(250, self._poll_status_queue)
+        self.root.after(100, self._poll_status_queue)
 
 
 def main() -> None:
