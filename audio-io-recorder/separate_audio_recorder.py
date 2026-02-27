@@ -252,24 +252,61 @@ class AudioRecorder:
         self._recording = False
         self._cleanup_streams()
 
+        # Snapshot chunks and configuration under lock to avoid races with callbacks.
         with self._lock:
-            mic = np.concatenate(self._mic_chunks) if self._mic_chunks else np.zeros(0, dtype=np.float32)
-            sysa = np.concatenate(self._sys_chunks) if self._sys_chunks else np.zeros(0, dtype=np.float32)
+            mic_chunks = list(self._mic_chunks)
+            sys_chunks = list(self._sys_chunks)
 
-        n = max(len(mic), len(sysa))
-        if n == 0:
+        # Preserve original behavior: if no audio was captured, raise on the calling thread.
+        if not mic_chunks and not sys_chunks:
             raise RuntimeError("No audio captured")
 
-        if len(mic) < n:
-            mic = np.pad(mic, (0, n - len(mic)))
-        if len(sysa) < n:
-            sysa = np.pad(sysa, (0, n - len(sysa)))
+        save_path = self.save_path
+        sample_rate = self.sample_rate
+        output_format = self.output_format
 
-        stereo = np.column_stack([sysa, mic]).astype(np.float32)
-        self._write_audio_file(self.save_path, stereo, self.sample_rate, self.output_format)
-        self._push_status(f"Saved {self.output_format}: {self.save_path}")
-        return self.save_path
+        # Perform potentially slow processing and file I/O on a background thread
+        # so the UI/main thread is not blocked.
+        worker = threading.Thread(
+            target=self._process_and_save_recording,
+            args=(mic_chunks, sys_chunks, save_path, sample_rate, output_format),
+            daemon=True,
+        )
+        worker.start()
 
+        return save_path
+
+    def _process_and_save_recording(
+        self,
+        mic_chunks: list[np.ndarray],
+        sys_chunks: list[np.ndarray],
+        save_path: str | Path,
+        sample_rate: int,
+        output_format: str,
+    ) -> None:
+        """Reconstruct and save the recording on a background thread."""
+        try:
+            mic = np.concatenate(mic_chunks) if mic_chunks else np.zeros(0, dtype=np.float32)
+            sysa = np.concatenate(sys_chunks) if sys_chunks else np.zeros(0, dtype=np.float32)
+
+            n = max(len(mic), len(sysa))
+            if n == 0:
+                # Should already have been checked in stop(), but guard defensively.
+                self._push_status("No audio captured; nothing to save.")
+                return
+
+            if len(mic) < n:
+                mic = np.pad(mic, (0, n - len(mic)))
+            if len(sysa) < n:
+                sysa = np.pad(sysa, (0, n - len(sysa)))
+
+            stereo = np.column_stack([sysa, mic]).astype(np.float32)
+            self._write_audio_file(save_path, stereo, sample_rate, output_format)
+            self._push_status(f"Saved {output_format}: {save_path}")
+        except Exception as exc:
+            # Report failure via status; exceptions here cannot be propagated
+            # back to the UI thread directly.
+            self._push_status(f"Error while saving recording: {exc}")
     def _cleanup_streams(self) -> None:
         for stream in (self._mic_stream, self._sys_stream):
             if stream is None:
