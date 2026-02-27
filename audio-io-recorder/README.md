@@ -30,7 +30,7 @@ For **MP3** output, install **ffmpeg** and make sure `ffmpeg` is available on yo
 ## Run
 
 ```bash
-python separate_call_recorder.py
+python separate_audio_recorder.py
 ```
 
 ## Platform notes
