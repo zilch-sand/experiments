@@ -475,7 +475,7 @@ class RecorderApp:
     def _default_output_path(self, output_format: str) -> Path:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         ext = FORMAT_EXTENSIONS[output_format.upper()]
-        return Path.cwd() / f"call_recording_{timestamp}{ext}"
+        return Path.cwd() / f"audio_recording_{timestamp}{ext}"
 
     def _set_defaults(self) -> None:
         input_defaults = [d.display() for d in self.devices if d.is_input]
