@@ -119,11 +119,16 @@ class AudioRecorder:
     @staticmethod
     def _to_mono(indata: np.ndarray) -> np.ndarray:
         arr = np.asarray(indata, dtype=np.float32)
+        # If already 1D, treat as mono and return a copy
         if arr.ndim == 1:
             return arr.copy()
+        # If shape is (N, 1), squeeze to 1D
         if arr.shape[1] == 1:
             return arr[:, 0].copy()
-        return arr.mean(axis=1, dtype=np.float32)
+        # Sum channels and clip to preserve signal strength without exceeding [-1.0, 1.0]
+        mono = arr.sum(axis=1, dtype=np.float32)
+        np.clip(mono, -1.0, 1.0, out=mono)
+        return mono
 
     @staticmethod
     def _require_ffmpeg() -> str:
