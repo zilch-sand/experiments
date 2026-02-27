@@ -160,7 +160,10 @@ class AudioRecorder:
                     "2",
                     path,
                 ]
-                result = subprocess.run(cmd, capture_output=True, text=True)
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                except subprocess.TimeoutExpired as exc:
+                    raise RuntimeError("ffmpeg timed out during MP3 export.") from exc
                 if result.returncode != 0:
                     stderr = (result.stderr or "").strip()
                     raise RuntimeError(f"ffmpeg failed during MP3 export. {stderr}")
