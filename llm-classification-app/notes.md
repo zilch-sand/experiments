@@ -45,7 +45,13 @@
 - Cost estimation: first row used as sample for token count × total rows.
 - AI Feedback from Tab 1 navigates to Tab 4 automatically.
 
-## Known Limitations / TODOs
+## Updates (2026-03-02)
+
+- Fixed duplicate `thinking_level` input ID between Setup & Test and Arena tabs — arena now uses `arena_thinking_level`.
+- Fixed inline relative imports in `app.py` server functions (they caused runtime errors when running via `shiny run`). All vertex_client imports moved to top-level try/except block.
+- Fixed demo mode returning random labels from a hardcoded list — now uses `_extract_categories_from_prompt()` to parse actual categories from the rendered prompt.
+- Added `_DEMO_FEEDBACK` constant and system-prompt-based detection so AI Feedback tab returns meaningful structured feedback in demo mode instead of a random label.
+- Improved `feedback_output` renderer to parse `**bold**` markers into `<strong>` HTML tags.
 
 1. Batch jobs table does not auto-refresh (click "Refresh Status").
 2. Dynamic remove-contestant buttons rely on `getattr(input, btn_id)` which may not

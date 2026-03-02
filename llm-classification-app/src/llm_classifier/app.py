@@ -4,19 +4,39 @@ LLM Classification Shiny App – main entry point.
 from __future__ import annotations
 
 import io
+import sys
+import os
 import time
 from typing import Optional
+
+# Allow running as `shiny run src/llm_classifier/app.py` (no package context)
+_pkg_dir = os.path.dirname(os.path.abspath(__file__))
+_src_dir = os.path.dirname(_pkg_dir)
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
 import pandas as pd
 from shiny import App, Inputs, Outputs, Session, reactive, render, ui
 import shinyswatch
 
-from .models import MODELS, estimate_cost, get_price
-from .prompt_builder import build_prompt, validate_prompt, get_prompt_columns
-from .classification import classify_row, fuzzy_match_label
-from .batch_manager import BatchManager, BatchJob
-from .arena import ArenaConfig, ContestantConfig, run_arena_row, judge_responses, DEFAULT_JUDGE_PROMPT
-from .config import DEMO_MODE, GCS_BUCKET, BQ_DATASET
+try:
+    from .models import MODELS, estimate_cost, get_price
+    from .prompt_builder import build_prompt, validate_prompt, get_prompt_columns
+    from .classification import classify_row, fuzzy_match_label
+    from .batch_manager import BatchManager, BatchJob
+    from .arena import ArenaConfig, ContestantConfig, run_arena_row, judge_responses, DEFAULT_JUDGE_PROMPT
+    from .config import DEMO_MODE, GCS_BUCKET, BQ_DATASET
+    from .vertex_client import call_model as _vertex_call_model, count_tokens as _vertex_count_tokens
+    from .vertex_client import create_batch_job as _vertex_create_batch, get_batch_status as _vertex_get_batch_status
+except ImportError:
+    from llm_classifier.models import MODELS, estimate_cost, get_price
+    from llm_classifier.prompt_builder import build_prompt, validate_prompt, get_prompt_columns
+    from llm_classifier.classification import classify_row, fuzzy_match_label
+    from llm_classifier.batch_manager import BatchManager, BatchJob
+    from llm_classifier.arena import ArenaConfig, ContestantConfig, run_arena_row, judge_responses, DEFAULT_JUDGE_PROMPT
+    from llm_classifier.config import DEMO_MODE, GCS_BUCKET, BQ_DATASET
+    from llm_classifier.vertex_client import call_model as _vertex_call_model, count_tokens as _vertex_count_tokens
+    from llm_classifier.vertex_client import create_batch_job as _vertex_create_batch, get_batch_status as _vertex_get_batch_status
 
 # ---------------------------------------------------------------------------
 # Helper constants
@@ -66,10 +86,10 @@ def _model_card(model_name: str, model_id: str) -> ui.Tag:
     )
 
 
-def _thinking_ui(show: bool = False) -> ui.Tag:
+def _thinking_ui(show: bool = False, input_id: str = "thinking_level", container_id: str = "thinking_container") -> ui.Tag:
     return ui.div(
         ui.input_slider(
-            "thinking_level",
+            input_id,
             "Thinking depth",
             min=0, max=3, value=0, step=1,
             ticks=True,
@@ -77,7 +97,7 @@ def _thinking_ui(show: bool = False) -> ui.Tag:
         ui.p(
             ui.tags.small("0=off, 1=1K tokens, 2=8K tokens, 3=32K tokens", class_="text-muted")
         ),
-        id="thinking_container",
+        id=container_id,
         style="" if show else "display:none;",
     )
 
@@ -306,7 +326,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.ui
     def thinking_ui():
         model = current_model()
-        return _thinking_ui(show=model.supports_thinking)
+        return _thinking_ui(show=model.supports_thinking, input_id="thinking_level", container_id="thinking_container")
 
     @render.ui
     def prompt_preview():
@@ -331,8 +351,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             return ui.div()
         # Use first row as token estimate proxy
         sample_prompt = build_prompt(template, df.iloc[0].to_dict(), cats, is_multi())
-        from .vertex_client import count_tokens
-        approx_input = count_tokens(model, sample_prompt)
+        approx_input = _vertex_count_tokens(model, sample_prompt)
         approx_output = 15  # typical short label response
         cost_per_row = estimate_cost(model.id, approx_input, approx_output)
         total_cost = cost_per_row * len(df)
@@ -463,9 +482,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         gcs_uri = input.gcs_bucket() or "gs://demo-bucket/llm-classifier"
         bq_table = input.bq_dataset() or "demo_dataset.batch_results"
 
-        from .vertex_client import create_batch_job
         try:
-            job_id = create_batch_job(model, prompts, bq_table, gcs_uri)
+            job_id = _vertex_create_batch(model, prompts, bq_table, gcs_uri)
         except Exception as exc:
             ui.notification_show(f"Batch submission failed: {exc}", type="error")
             return
@@ -484,14 +502,13 @@ def server(input: Inputs, output: Outputs, session: Session):
     @reactive.effect
     @reactive.event(input.refresh_batch)
     def _refresh_batch():
-        from .vertex_client import get_batch_status
         for job in batch_mgr.list_jobs():
             if job.status in ("running", "pending"):
                 model = next((m for m in MODELS.values() if m.id == job.model_id), None)
                 if model is None:
                     continue
                 try:
-                    status = get_batch_status(model, job.id)
+                    status = _vertex_get_batch_status(model, job.id)
                     new_status = "completed" if status["completed"] and status["state"] == "JOB_STATE_SUCCEEDED" else (
                         "failed" if "FAILED" in status["state"] or "CANCELLED" in status["state"] else "running"
                     )
@@ -514,7 +531,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render.ui
     def arena_thinking_ui():
         model = MODELS[input.arena_model()]
-        return _thinking_ui(show=model.supports_thinking)
+        return _thinking_ui(show=model.supports_thinking, input_id="arena_thinking_level", container_id="arena_thinking_container")
 
     @render.ui
     def contestants_list():
@@ -542,7 +559,7 @@ def server(input: Inputs, output: Outputs, session: Session):
     def _add_contestant():
         model = MODELS[input.arena_model()]
         label = input.arena_label().strip() or model.display_name
-        thinking = int(input.thinking_level()) if model.supports_thinking else 0
+        thinking = int(input.arena_thinking_level()) if model.supports_thinking else 0
         current = list(arena_contestants())
         current.append({
             "model_name": input.arena_model(),
@@ -691,9 +708,15 @@ def server(input: Inputs, output: Outputs, session: Session):
         text = feedback_text()
         if not text:
             return ui.p("Click 'Get AI Feedback' to analyse your prompt.", class_="text-muted")
-        # Render markdown-ish text as paragraphs
-        paras = [ui.p(line) for line in text.split("\n") if line.strip()]
-        return ui.div(*paras, class_="feedback-result")
+        # Render each non-empty line as a paragraph, preserving bold markers as-is
+        paras = []
+        for line in text.split("\n"):
+            if line.strip():
+                # Render **bold** markers via HTML
+                import re
+                rendered = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
+                paras.append(ui.p(ui.HTML(rendered)))
+        return ui.div(*paras, class_="feedback-result lh-lg")
 
     @reactive.effect
     @reactive.event(input.get_feedback, input.get_feedback_btn)
@@ -706,9 +729,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             prompt=template,
             categories="\n".join(f"- {c}" for c in cats),
         )
-        from .vertex_client import call_model as _call
         try:
-            result = _call(
+            result = _vertex_call_model(
                 model_config=model,
                 prompt=feedback_prompt,
                 system_prompt=_FEEDBACK_SYSTEM,

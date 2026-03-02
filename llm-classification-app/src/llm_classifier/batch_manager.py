@@ -75,6 +75,25 @@ class BatchManager:
     def cleanup_completed_job(self, job_id: str) -> None:
         """
         Remove GCS / BQ resources for a completed job then delete from tracking.
-        TODO: implement actual GCS blob deletion and BQ table deletion.
+        Deletes the GCS output prefix and BQ table if they are set on the job.
         """
+        job = self._jobs.get(job_id)
+        if job and job.gcs_uri:
+            try:
+                from google.cloud import storage as _gcs
+                bucket_name, *path_parts = job.gcs_uri.replace("gs://", "").split("/")
+                prefix = "/".join(path_parts) if path_parts else ""
+                client = _gcs.Client()
+                bucket = client.bucket(bucket_name)
+                blobs = list(bucket.list_blobs(prefix=prefix))
+                bucket.delete_blobs(blobs)
+            except Exception:
+                pass  # best-effort; don't block job removal
+        if job and job.bq_table:
+            try:
+                from google.cloud import bigquery as _bq
+                bq = _bq.Client()
+                bq.delete_table(job.bq_table, not_found_ok=True)
+            except Exception:
+                pass
         self.remove_job(job_id)

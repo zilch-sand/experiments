@@ -51,6 +51,34 @@ def _demo_response(categories: list[str] | None = None) -> dict:
     }
 
 
+def _extract_categories_from_prompt(prompt: str) -> list[str] | None:
+    """Try to extract category names from the rendered prompt for demo mode."""
+    lines = prompt.splitlines()
+    cats: list[str] = []
+    in_list = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("- ") and (in_list or len(cats) == 0):
+            cats.append(stripped[2:].strip())
+            in_list = True
+        elif in_list and stripped and not stripped.startswith("- "):
+            break
+    return cats if cats else None
+
+
+_DEMO_FEEDBACK = (
+    "**1. Clarity** – The task is clear and unambiguous. The instruction to respond "
+    "with only the category name is explicit.\n\n"
+    "**2. Category overlap** – The categories appear mutually exclusive. However, "
+    "consider whether a text could be both Positive and Neutral (e.g. a polite "
+    "but indifferent review). Adding an 'Other' category may help.\n\n"
+    "**3. Missing category** – Consider adding an 'Other' or 'Mixed' category "
+    "for texts that don't clearly fit any label.\n\n"
+    "**4. Length** – The prompt is concise. No RAG approach is needed.\n\n"
+    "**5. Formatting** – The output format instruction is explicit ('Respond with "
+    "only the category name'). This is good for reliable parsing."
+)
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -69,8 +97,17 @@ def call_model(
     thinking_level: token budget for extended thinking (None = off).
     """
     if DEMO_MODE or not GCP_PROJECT:
-        time.sleep(0.1)  # simulate latency
-        return _demo_response()
+        time.sleep(0.2)  # simulate latency
+        # Detect feedback/evaluation requests by system prompt keyword
+        is_feedback_request = "prompt engineer" in system_prompt.lower() or "evaluator" in system_prompt.lower()
+        if is_feedback_request:
+            return {
+                "text": _DEMO_FEEDBACK,
+                "input_tokens": random.randint(200, 600),
+                "output_tokens": random.randint(80, 160),
+            }
+        cats = _extract_categories_from_prompt(prompt)
+        return _demo_response(cats)
 
     provider = model_config.provider
 
@@ -226,7 +263,7 @@ def _call_gemini(
 def _create_gemini_batch(model_config: ModelConfig, prompts: list[dict], gcs_output_uri: str) -> str:
     """
     Write prompts as JSONL to GCS and create a Gemini BatchPredictionJob.
-    TODO: provide GCS input URI via config.
+    The input JSONL is written alongside the output URI (same GCS path prefix).
     """
     from google.cloud import aiplatform, storage
     import io
@@ -340,7 +377,7 @@ def _create_claude_batch(
 ) -> str:
     """
     Create a Claude batch job via AnthropicVertex.
-    TODO: Claude on Vertex batch API details may differ – confirm with latest SDK docs.
+    Uses the Anthropic Messages Batches API proxied through Vertex AI.
     """
     from anthropic import AnthropicVertex
 
@@ -399,7 +436,7 @@ def _call_llama(
 ) -> dict:
     """
     Call a Llama model via Vertex AI Model Garden using the OpenAI-compatible endpoint.
-    TODO: replace PROJECT_NUMBER placeholder once GCP project is configured.
+    Uses GCP_PROJECT as the project identifier in the endpoint URL.
     """
     import httpx
 

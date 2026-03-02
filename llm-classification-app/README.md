@@ -113,4 +113,4 @@ pytest
 
 ## Submodule
 
-`llm-prices/` is a git submodule containing up-to-date model pricing data from [llm-prices](https://github.com/mckaywrigley/llm-prices) (or similar).
+`llm-prices/` is a git submodule containing up-to-date model pricing data from [llm-prices](https://github.com/simonw/llm-prices) by Simon Willison.
