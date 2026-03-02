@@ -11,3 +11,10 @@ package-lock.json
 .env
 
 wos-fast5k-playwright/downloads/
+
+# Python virtual environments
+.venv/
+*.egg-info/
+uv.lock
+.pytest_cache/
+.python-version
