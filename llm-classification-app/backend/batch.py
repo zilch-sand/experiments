@@ -177,7 +177,10 @@ def retrieve_batch_results(
         for line in content.text.strip().split("\n"):
             record = json.loads(line)
             custom_id = record.get("custom_id", "")
-            row_idx = int(custom_id.split("-")[1]) if "-" in custom_id else 0
+            try:
+                row_idx = int(custom_id.split("-")[1]) if "-" in custom_id else 0
+            except (ValueError, IndexError):
+                row_idx = 0
 
             response_body = record.get("response", {}).get("body", {})
             choices = response_body.get("choices", [])

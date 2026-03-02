@@ -112,7 +112,9 @@ def judge_arena_results(
 ) -> str:
     """Use a judge model to evaluate arena results.
 
-    Note: Categories are NOT included in the judge prompt per requirements.
+    Categories are excluded from the judge prompt to avoid biasing
+    the evaluation — the judge should assess quality based solely
+    on how well each classification matches the source text.
     """
     # Build classification summary for judge
     classifications_text = ""

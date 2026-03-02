@@ -681,8 +681,8 @@ with tab_batch:
                             if st.button(
                                 "📥 Get Results", key=f"get_{bid}"
                             ):
-                                # Use categories from batch metadata or current
-                                cats = batch_categories or categories
+                                # Use categories from batch tab input
+                                cats = batch_categories
                                 ml = batch.get("multi_label", False)
                                 dlm = batch.get("delimiter", "|")
                                 results = retrieve_batch_results(

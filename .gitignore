@@ -18,3 +18,6 @@ wos-fast5k-playwright/downloads/
 uv.lock
 .pytest_cache/
 .python-version
+
+# Batch state (runtime data)
+llm-classification-app/batch_state/*.json

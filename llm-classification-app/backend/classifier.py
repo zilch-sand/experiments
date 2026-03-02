@@ -98,11 +98,14 @@ def classify_rows(
 
 
 def count_tokens_for_prompt(prompt_text: str, model_id: str) -> int:
-    """Estimate token count for a prompt using litellm."""
+    """Estimate token count for a prompt using litellm.
+
+    Falls back to character-based estimation (~4 chars/token) if
+    litellm token counting fails (e.g., unsupported model, missing tokenizer).
+    """
     try:
         return litellm.token_counter(model=model_id, text=prompt_text)
     except Exception:
-        # Rough estimate: ~4 chars per token
         return len(prompt_text) // 4
 
 
