@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.log
+# Keep batch_jobs.json in repo for persistence across sessions
+# batch_jobs.json

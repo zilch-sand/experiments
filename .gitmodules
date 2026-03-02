@@ -1,0 +1,3 @@
+[submodule "llm-classification-app/llm-prices"]
+	path = llm-classification-app/llm-prices
+	url = https://github.com/simonw/llm-prices
