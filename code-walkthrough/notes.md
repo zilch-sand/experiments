@@ -1,23 +1,22 @@
 # Code Walkthrough Notes
 
 ## Goal
-Create a showboat walkthrough.md that explains the entire experiments repository in a linear, code-inclusive tour.
+Create a showboat walkthrough.md that explains the `llm-classification-app` in detail, covering every backend module and the Streamlit frontend.
 
-## Repository Overview
-8 experiments covering:
-1. cli-tools-pattern - Python package with CLI entry points
-2. jsonforms-pydantic-demo (docs) - Showboat + Rodney documentation
-3. llm-classification-app - Streamlit + FastAPI + Vertex AI classification
-4. posit_connect_static_tool_test - Static HTML + FastAPI proxy
-5. pydantic-jsonforms-demo - Pydantic → JSON Schema → React forms
-6. readme-summaries-setup - GitHub Actions auto-README generation
-7. simonw-tools-exploration - Flat HTML utilities infrastructure
-8. wos-fast5k-playwright - Playwright bulk export automation
+## App Architecture
+- `app.py` — Streamlit frontend, 3 tabs
+- `backend/prompt.py` — PromptTemplate dataclass
+- `backend/models.py` — ModelConfig + thinking-level handling
+- `backend/pricing.py` — ModelPrice, llm-prices submodule loader, Vertex AI model list
+- `backend/classifier.py` — classify_single_row, classify_rows, token estimation
+- `backend/fuzzy_match.py` — rapidfuzz-based label normalisation
+- `backend/arena.py` — multi-model comparison + judge
+- `backend/batch.py` — Vertex AI async batch jobs with file-based state
+- `backend/feedback.py` — AI critique of prompt + categories
 
 ## Showboat Plan
-- Use `showboat init` to create the document
-- Use `showboat note` for section intros and explanations
-- Use `showboat exec bash` with cat/grep/sed/head to embed code snippets
+- Use `showboat note` for explanations of each module
+- Use `showboat exec bash` with sed/grep/cat to embed real code snippets
 
 ## Key Insight
-The repo is a collection of experiments, each showing a different pattern or tool integration. The walkthrough should be linear — explaining each experiment's purpose, then showing the key code that makes it work.
+The clean separation of `backend/` from `app.py` means backend modules have no Streamlit imports and are fully testable without running the UI.
