@@ -4,23 +4,42 @@ import re
 from dataclasses import dataclass, field
 
 
-DEFAULT_CLASSIFICATION_PROMPT = """Classify the following text into one of the provided categories.
+DEFAULT_CLASSIFICATION_PROMPT = """
+You are a precise document classifier.  Classify the document below into \
+exactly ONE of the provided categories.
 
-Text to classify:
+## Categories
+{categories}
+
+## Document
 {text}
 
-Categories: {label_options}
+## Instructions
+- Return the single best-matching category from the list above.
+- Use the category name EXACTLY as listed — do not paraphrase or abbreviate.
+- Return ONLY the category. No markdown fences, no commentary.
+"""
 
-Respond with ONLY the category label, nothing else."""
+DEFAULT_MULTI_LABEL_PROMPT = """
+You are a precise document classifier.  For the document below, assign \
+ALL categories that apply from the provided list.
 
-DEFAULT_MULTI_LABEL_PROMPT = """Classify the following text into one or more of the provided categories.
+## Categories
+{categories}
 
-Text to classify:
+## Document
 {text}
 
-Categories: {label_options}
-
-Respond with the applicable category labels separated by '|'. Include ONLY the labels, nothing else."""
+## Instructions
+- For the document, return ALL categories that are relevant, separated by '|'.
+- A document may match one, or several.
+- Only include categories with meaningful relevance — do not force matches.
+- Use the category name EXACTLY as listed — do not paraphrase or abbreviate.
+- If no categories apply, return "Other". Do not return "Other" AND other categories.
+- Return your answer as valid JSON matching this schema:
+{{"categories": [{{"category": "<name>"}}, ...]}}
+- Return ONLY the JSON object.  No markdown fences, no commentary.
+"""
 
 
 @dataclass
