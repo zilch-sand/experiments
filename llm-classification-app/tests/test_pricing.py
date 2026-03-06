@@ -44,9 +44,8 @@ class TestModelPrice:
 
 
 class TestLoadPrices:
-    def test_loads_from_submodule(self):
+    def test_loads_prices(self):
         prices = load_all_prices()
-        # Should load at least some models from the submodule
         assert len(prices) > 0
 
     def test_google_models_present(self):

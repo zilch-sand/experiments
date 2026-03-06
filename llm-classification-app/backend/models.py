@@ -1,5 +1,6 @@
 """Model configuration and Vertex AI integration via litellm."""
 
+import os
 from dataclasses import dataclass, field
 from backend.pricing import get_vertex_models, ModelPrice
 
@@ -23,30 +24,49 @@ class ModelConfig:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
-        # Thinking budget / effort for models that support it
+        # Thinking / reasoning for models that support it.
+        # "auto" = adaptive thinking (model chooses budget; Claude 4.5+ and Gemini 2.5+)
+        # "low/medium/high" = extended thinking with explicit token budget
         if self.thinking_level:
             if "gemini" in self.vertex_id.lower():
-                # Gemini uses thinking_config
-                budget_map = {"low": 1024, "medium": 8192, "high": 32768}
-                kwargs["thinking"] = {
-                    "type": "enabled",
-                    "budget_tokens": budget_map.get(self.thinking_level, 8192),
-                }
+                if self.thinking_level == "auto":
+                    # Adaptive: let the model decide the budget
+                    kwargs["thinking"] = {"type": "enabled"}
+                else:
+                    budget_map = {"low": 1024, "medium": 8192, "high": 32768}
+                    kwargs["thinking"] = {
+                        "type": "enabled",
+                        "budget_tokens": budget_map.get(self.thinking_level, 8192),
+                    }
             elif "claude" in self.vertex_id.lower():
-                # Claude uses extended thinking
-                budget_map = {"low": 2048, "medium": 10000, "high": 32000}
-                kwargs["thinking"] = {
-                    "type": "enabled",
-                    "budget_tokens": budget_map.get(self.thinking_level, 10000),
-                }
+                if self.thinking_level == "auto":
+                    # Adaptive thinking (Claude 4.5+): model manages its own budget
+                    kwargs["thinking"] = {"type": "enabled"}
+                else:
+                    budget_map = {"low": 2048, "medium": 10000, "high": 32000}
+                    kwargs["thinking"] = {
+                        "type": "enabled",
+                        "budget_tokens": budget_map.get(self.thinking_level, 10000),
+                    }
+                # Claude on Vertex AI: use the region from VERTEX_REGION if set
+                region = os.environ.get("VERTEX_REGION")
+                if region:
+                    kwargs["vertex_ai_location"] = region
+        elif "claude" in self.vertex_id.lower():
+            # Always pass region for Claude models, even when thinking is off
+            region = os.environ.get("VERTEX_REGION")
+            if region:
+                kwargs["vertex_ai_location"] = region
         kwargs.update(self.extra_params)
         return kwargs
 
 
-# Thinking level options per vendor
+# Thinking level options per vendor.
+# "auto" = adaptive thinking (model decides budget; Claude 4.5+ / Gemini 2.5+)
+# "low/medium/high" = extended thinking with explicit token budgets
 THINKING_LEVELS = {
-    "Google": ["none", "low", "medium", "high"],
-    "Anthropic": ["none", "low", "medium", "high"],
+    "Google": ["none", "auto", "low", "medium", "high"],
+    "Anthropic": ["none", "auto", "low", "medium", "high"],
     "Meta": [],  # Llama doesn't support thinking
 }
 
@@ -79,7 +99,7 @@ def create_model_config(
 ) -> ModelConfig:
     """Create a ModelConfig from model info dict."""
     return ModelConfig(
-        vertex_id=model_info["vertex_id"],
+        vertex_id="vertex_ai/" + model_info["vertex_id"],
         display_name=model_info["name"],
         vendor=model_info["vendor"],
         price=model_info.get("price"),

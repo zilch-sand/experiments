@@ -66,11 +66,8 @@ The backend is completely independent of Streamlit. All business logic lives in 
 ## Setup
 
 ```bash
-# Clone with submodules
-git clone --recurse-submodules <repo-url>
-cd llm-classification-app
-
 # Install dependencies
+cd llm-classification-app
 uv sync
 
 # Run the app

@@ -62,7 +62,7 @@ class PromptTemplate:
         delimiter: str = "|",
     ) -> str:
         """Render the prompt for a specific row."""
-        label_str = ", ".join(categories)
+        label_str = "\n".join(categories)
         values = {"label_options": label_str}
         for col in self.columns_used:
             values[col] = str(row.get(col, f"[missing:{col}]"))
