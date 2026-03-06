@@ -44,3 +44,4 @@ Backend is fully independent of Streamlit. All business logic lives in `backend/
 - Implemented all backend modules
 - Created Streamlit app with 3 tabs: Classify, Arena, Batch Jobs
 - Added tests for prompt, fuzzy_match, pricing, and batch modules
+- Created walkthrough.md using showboat with full linear code walkthrough, live code demos, and screenshots captured with rodney
