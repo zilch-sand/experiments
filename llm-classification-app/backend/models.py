@@ -12,7 +12,7 @@ class ModelConfig:
     display_name: str
     vendor: str
     price: ModelPrice | None = None
-    temperature: float = 0.0
+    temperature: float | None = None
     max_tokens: int = 4096
     thinking_level: str | None = None  # "low", "medium", "high" for supported models
     extra_params: dict = field(default_factory=dict)
@@ -23,6 +23,8 @@ class ModelConfig:
             "model": self.vertex_id,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
+            "vertex_ai_project": os.getenv("VERTEX_PROJECT_ID"),
+            "vertex_ai_location": os.getenv("VERTEX_REGION"),
         }
         # Thinking / reasoning for models that support it.
         # "auto" = adaptive thinking (model chooses budget; Claude 4.5+ and Gemini 2.5+)
@@ -48,15 +50,6 @@ class ModelConfig:
                         "type": "enabled",
                         "budget_tokens": budget_map.get(self.thinking_level, 10000),
                     }
-                # Claude on Vertex AI: use the region from VERTEX_REGION if set
-                region = os.environ.get("VERTEX_REGION")
-                if region:
-                    kwargs["vertex_ai_location"] = region
-        elif "claude" in self.vertex_id.lower():
-            # Always pass region for Claude models, even when thinking is off
-            region = os.environ.get("VERTEX_REGION")
-            if region:
-                kwargs["vertex_ai_location"] = region
         kwargs.update(self.extra_params)
         return kwargs
 
