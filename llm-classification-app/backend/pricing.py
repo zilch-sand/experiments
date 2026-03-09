@@ -54,28 +54,15 @@ def load_all_prices() -> dict[str, ModelPrice]:
 
 def get_vertex_models() -> list[dict]:
     """Return models available on Vertex AI with pricing info."""
-    data = json.loads(_PRICES_FILE.read_text())
-    models = []
-    for entry in data.get("prices", []):
-        vertex_id = entry.get("vertex_id")
-        if not vertex_id:
-            continue
-        price = ModelPrice(
-            model_id=entry["id"],
-            name=entry.get("name", entry["id"]),
-            vendor=entry.get("vendor", ""),
-            input_per_mtok=entry.get("input", 0),
-            output_per_mtok=entry.get("output", 0),
-            input_cached_per_mtok=entry.get("input_cached"),
-        )
-        models.append({
-            "id": entry["id"],
-            "vertex_id": vertex_id,
+    return [
+        {
+            "model_id": price.model_id,
             "name": price.name,
-            "vendor": entry.get("vendor", "").capitalize(),
+            "vendor": price.vendor.capitalize(),
             "price": price,
-        })
-    return models
+        }
+        for price in load_all_prices().values()
+    ]
 
 
 def estimate_dataset_cost(

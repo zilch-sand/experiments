@@ -90,7 +90,7 @@ def prepare_batch_requests(
             "method": "POST",
             "url": "/v1/chat/completions",
             "body": {
-                "model": model_config.vertex_id.replace("vertex_ai/", ""),
+                "model": model_config.model_id,
                 "messages": [{"role": "user", "content": prompt_text}],
                 "max_tokens": model_config.max_tokens,
                 "temperature": model_config.temperature,
@@ -131,7 +131,7 @@ def submit_batch(
 
         # Save batch ID for recovery
         save_batch_id(batch_id, {
-            "model": model_config.vertex_id,
+            "model": model_config.model_id,
             "description": description,
             "num_requests": len(requests),
         })

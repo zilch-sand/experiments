@@ -61,7 +61,7 @@ class TestPrepareRequests:
     def test_prepare_basic(self):
         df = pd.DataFrame({"text": ["Hello", "World"]})
         config = ModelConfig(
-            vertex_id="vertex_ai/gemini-2.0-flash",
+            model_id="gemini-2.0-flash",
             display_name="Gemini 2.0 Flash",
             vendor="Google",
         )

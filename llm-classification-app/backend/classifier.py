@@ -122,7 +122,7 @@ def estimate_tokens_from_sample(
 
     for _, row in sample.iterrows():
         prompt_text = prompt_template.render(row.to_dict(), categories)
-        tokens = count_tokens_for_prompt(prompt_text, model_id)
+        tokens = count_tokens_for_prompt(prompt_text, "vertex_ai/" + model_id)
         token_counts.append(tokens)
 
     avg_input = sum(token_counts) / len(token_counts) if token_counts else 0

@@ -208,7 +208,7 @@ with tab_classify:
             if not errors and categories:
                 token_info = estimate_tokens_from_sample(
                     df, prompt_template, categories,
-                    model_config.vertex_id, sample_size=5,
+                    model_config.model_id, sample_size=5,
                 )
                 avg_in = token_info["avg_input_tokens"]
                 # Rough output estimate for classification
@@ -470,7 +470,7 @@ with tab_arena:
                     # Use rough token estimate
                     token_info = estimate_tokens_from_sample(
                         df, arena_template, arena_categories,
-                        config.vertex_id, sample_size=3,
+                        config.model_id, sample_size=3,
                     )
                     avg_in = token_info["avg_input_tokens"]
                     avg_out = 20

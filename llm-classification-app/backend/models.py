@@ -8,19 +8,19 @@ from backend.pricing import get_vertex_models, ModelPrice
 @dataclass
 class ModelConfig:
     """Configuration for a model run."""
-    vertex_id: str
+    model_id: str
     display_name: str
     vendor: str
     price: ModelPrice | None = None
     temperature: float | None = None
-    max_tokens: int = 4096
+    max_tokens: int = 40000
     thinking_level: str | None = None  # "low", "medium", "high" for supported models
     extra_params: dict = field(default_factory=dict)
 
     def to_litellm_kwargs(self) -> dict:
         """Convert to kwargs for litellm.completion()."""
         kwargs = {
-            "model": self.vertex_id,
+            "model": "vertex_ai/" + self.model_id,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "vertex_ai_project": os.getenv("VERTEX_PROJECT_ID"),
@@ -30,7 +30,7 @@ class ModelConfig:
         # "auto" = adaptive thinking (model chooses budget; Claude 4.5+ and Gemini 2.5+)
         # "low/medium/high" = extended thinking with explicit token budget
         if self.thinking_level:
-            if "gemini" in self.vertex_id.lower():
+            if "gemini" in self.model_id.lower():
                 if self.thinking_level == "auto":
                     # Adaptive: let the model decide the budget
                     kwargs["thinking"] = {"type": "enabled"}
@@ -40,7 +40,7 @@ class ModelConfig:
                         "type": "enabled",
                         "budget_tokens": budget_map.get(self.thinking_level, 8192),
                     }
-            elif "claude" in self.vertex_id.lower():
+            elif "claude" in self.model_id.lower():
                 if self.thinking_level == "auto":
                     # Adaptive thinking (Claude 4.5+): model manages its own budget
                     kwargs["thinking"] = {"type": "enabled"}
@@ -87,12 +87,12 @@ def get_model_by_display_name(display_name: str) -> dict | None:
 def create_model_config(
     model_info: dict,
     temperature: float = 0.0,
-    max_tokens: int = 4096,
+    max_tokens: int = 40000,
     thinking_level: str | None = None,
 ) -> ModelConfig:
     """Create a ModelConfig from model info dict."""
     return ModelConfig(
-        vertex_id="vertex_ai/" + model_info["vertex_id"],
+        model_id=model_info["model_id"],
         display_name=model_info["name"],
         vendor=model_info["vendor"],
         price=model_info.get("price"),

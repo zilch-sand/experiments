@@ -9,7 +9,7 @@ You are a precise document classifier.  Classify the document below into \
 exactly ONE of the provided categories.
 
 ## Categories
-{categories}
+{label_options}
 
 ## Document
 {text}
@@ -25,7 +25,7 @@ You are a precise document classifier.  For the document below, assign \
 ALL categories that apply from the provided list.
 
 ## Categories
-{categories}
+{label_options}
 
 ## Document
 {text}
