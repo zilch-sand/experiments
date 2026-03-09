@@ -1,0 +1,17 @@
+[project]
+name = "llm-classification-app"
+version = "0.1.0"
+description = "LLM-based text classification app using Vertex AI"
+requires-python = ">=3.12"
+dependencies = [
+    "google-cloud-aiplatform>=1.139.0",
+    "google-cloud-bigquery>=3.40.1",
+    "litellm>=1.82.0",
+    "pandas>=2.3.3",
+    "pytest>=9.0.2",
+    "rapidfuzz>=3.14.3",
+    "streamlit>=1.54.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
