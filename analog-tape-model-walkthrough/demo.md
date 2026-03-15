@@ -18,7 +18,7 @@ We'll start from the top-level plugin callback, then drill into each DSP subsyst
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py stage-order
 ```
 
-```output
+```cpp
 AnalogTapeModel commit: 604372e4ffd9690c3e283362e4598cb43edbb475
 Signal path inside processAudioBlock():
  1. L169: dryBuffer.makeCopyOf (buffer, true);
@@ -71,7 +71,7 @@ Before any audio runs, `prepareToPlay()` wires up sample rates, oversampling, bu
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/PluginProcessor.cpp 'void ChowtapeModelAudioProcessor::prepareToPlay' 'void ChowtapeModelAudioProcessor::releaseResources'
 ```
 
-```output
+```cpp
 Plugin/Source/PluginProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   93: void ChowtapeModelAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
   94: {
@@ -111,7 +111,7 @@ Plugin/Source/PluginProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/PluginProcessor.cpp 'float ChowtapeModelAudioProcessor::calcLatencySamples' 'bool ChowtapeModelAudioProcessor::isBusesLayoutSupported'
 ```
 
-```output
+```cpp
 Plugin/Source/PluginProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
  130: float ChowtapeModelAudioProcessor::calcLatencySamples() const noexcept
  131: {
@@ -124,7 +124,7 @@ Plugin/Source/PluginProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/PluginProcessor.cpp 'void ChowtapeModelAudioProcessor::latencyCompensation' 'AudioProcessorEditor* ChowtapeModelAudioProcessor::createEditor'
 ```
 
-```output
+```cpp
 Plugin/Source/PluginProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
  197: void ChowtapeModelAudioProcessor::latencyCompensation()
  198: {
@@ -168,7 +168,7 @@ A key detail: the input filters store the removed low/high components into side 
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Input_Filters/InputFilters.cpp 'void InputFilters::processBlock' 'void InputFilters::processBlockMakeup'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Input_Filters/InputFilters.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   69: void InputFilters::processBlock (AudioBuffer<float>& buffer)
   70: {
@@ -203,7 +203,7 @@ Plugin/Source/Processors/Input_Filters/InputFilters.cpp @ 604372e4ffd9690c3e2833
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Input_Filters/InputFilters.cpp 'void InputFilters::processBlockMakeup' '__EOF__'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Input_Filters/InputFilters.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   96: void InputFilters::processBlockMakeup (AudioBuffer<float>& buffer)
   97: {
@@ -242,7 +242,7 @@ Plugin/Source/Processors/Input_Filters/InputFilters.cpp @ 604372e4ffd9690c3e2833
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/MidSide/MidSideProcessor.cpp 'void MidSideProcessor::processInput' 'void MidSideProcessor::processOutput'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/MidSide/MidSideProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   44: void MidSideProcessor::processInput (AudioBuffer<float>& buffer)
   45: {
@@ -280,7 +280,7 @@ Plugin/Source/Processors/MidSide/MidSideProcessor.cpp @ 604372e4ffd9690c3e283362
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/MidSide/MidSideProcessor.cpp 'void MidSideProcessor::processOutput' '__EOF__'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/MidSide/MidSideProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   74: void MidSideProcessor::processOutput (AudioBuffer<float>& buffer)
   75: {
@@ -343,7 +343,7 @@ Plugin/Source/Processors/MidSide/MidSideProcessor.cpp @ 604372e4ffd9690c3e283362
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Hysteresis/ToneControl.cpp 'void ToneControl::processBlockIn' 'void ToneControl::processBlockOut'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Hysteresis/ToneControl.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
  101: void ToneControl::processBlockIn (AudioBuffer<float>& buffer)
  102: {
@@ -368,7 +368,7 @@ Plugin/Source/Processors/Hysteresis/ToneControl.cpp @ 604372e4ffd9690c3e283362e4
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Hysteresis/ToneControl.cpp 'void ToneControl::processBlockOut' '__EOF__'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Hysteresis/ToneControl.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
  118: void ToneControl::processBlockOut (AudioBuffer<float>& buffer)
  119: {
@@ -398,7 +398,7 @@ This is not trying to imitate magnetic hysteresis itself. Instead, it is an extr
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Compression/CompressionProcessor.cpp 'void CompressionProcessor::processBlock' 'float CompressionProcessor::getLatencySamples'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Compression/CompressionProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   57: void CompressionProcessor::processBlock (AudioBuffer<float>& buffer)
   58: {
@@ -471,7 +471,7 @@ The per-sample solve itself lives one level deeper in `HysteresisProcessing`, wh
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Hysteresis/HysteresisProcessor.cpp 'void HysteresisProcessor::processBlock' 'template <typename T, typename SmoothType>'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Hysteresis/HysteresisProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
  200: void HysteresisProcessor::processBlock (AudioBuffer<float>& buffer)
  201: {
@@ -608,7 +608,7 @@ Plugin/Source/Processors/Hysteresis/HysteresisProcessor.cpp @ 604372e4ffd9690c3e
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Hysteresis/HysteresisProcessing.h 'enum SolverType' 'private:'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Hysteresis/HysteresisProcessing.h @ 604372e4ffd9690c3e283362e4598cb43edbb475
    7: enum SolverType
    8: {
@@ -689,7 +689,7 @@ Plugin/Source/Processors/Hysteresis/HysteresisProcessing.h @ 604372e4ffd9690c3e2
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Hysteresis/HysteresisSTN.h 'class HysteresisSTN' '__EOF__'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Hysteresis/HysteresisSTN.h @ 604372e4ffd9690c3e283362e4598cb43edbb475
   15: class HysteresisSTN
   16: {
@@ -744,7 +744,7 @@ These are conceptually separate from hysteresis. They are “what the machine an
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Chew/ChewProcessor.cpp 'void ChewProcessor::processShortBlock' '__EOF__'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Chew/ChewProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   75: void ChewProcessor::processShortBlock (AudioBuffer<float>& buffer)
   76: {
@@ -814,7 +814,7 @@ Plugin/Source/Processors/Chew/ChewProcessor.cpp @ 604372e4ffd9690c3e283362e4598c
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Degrade/DegradeProcessor.cpp 'void DegradeProcessor::cookParams' 'void DegradeProcessor::prepareToPlay'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Degrade/DegradeProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   25: void DegradeProcessor::cookParams()
   26: {
@@ -841,7 +841,7 @@ Plugin/Source/Processors/Degrade/DegradeProcessor.cpp @ 604372e4ffd9690c3e283362
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Degrade/DegradeProcessor.cpp 'void DegradeProcessor::processShortBlock' '__EOF__'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Degrade/DegradeProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   82: void DegradeProcessor::processShortBlock (AudioBuffer<float>& buffer)
   83: {
@@ -891,7 +891,7 @@ Plugin/Source/Processors/Degrade/DegradeProcessor.cpp @ 604372e4ffd9690c3e283362
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Timing_Effects/WowFlutterProcessor.cpp 'void WowFlutterProcessor::processBlock' 'void WowFlutterProcessor::processWetBuffer'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Timing_Effects/WowFlutterProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   56: void WowFlutterProcessor::processBlock (AudioBuffer<float>& buffer)
   57: {
@@ -933,7 +933,7 @@ Plugin/Source/Processors/Timing_Effects/WowFlutterProcessor.cpp @ 604372e4ffd969
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Timing_Effects/WowFlutterProcessor.cpp 'void WowFlutterProcessor::processWetBuffer' 'void WowFlutterProcessor::processBypassed'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Timing_Effects/WowFlutterProcessor.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   90: void WowFlutterProcessor::processWetBuffer (AudioBuffer<float>& buffer)
   91: {
@@ -964,7 +964,7 @@ Plugin/Source/Processors/Timing_Effects/WowFlutterProcessor.cpp @ 604372e4ffd969
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Timing_Effects/WowProcess.h 'inline std::pair<float, float> getLFO' 'inline void boundPhase'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Timing_Effects/WowProcess.h @ 604372e4ffd9690c3e283362e4598cb43edbb475
   20:     inline std::pair<float, float> getLFO (int n, size_t ch) noexcept
   21:     {
@@ -980,7 +980,7 @@ Plugin/Source/Processors/Timing_Effects/WowProcess.h @ 604372e4ffd9690c3e283362e
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Timing_Effects/FlutterProcess.h 'inline std::pair<float, float> getLFO' 'inline void boundPhase'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Timing_Effects/FlutterProcess.h @ 604372e4ffd9690c3e283362e4598cb43edbb475
   23:     inline std::pair<float, float> getLFO (int n, size_t ch) noexcept
   24:     {
@@ -1012,7 +1012,7 @@ After that, `AzimuthProc` adds a stereo inter-channel delay difference that repr
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Loss_Effects/LossFilter.cpp 'void LossFilter::calcCoefs' 'void LossFilter::processBlock'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Loss_Effects/LossFilter.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   70: void LossFilter::calcCoefs (MultiChannelIIR& filter)
   71: {
@@ -1054,7 +1054,7 @@ Plugin/Source/Processors/Loss_Effects/LossFilter.cpp @ 604372e4ffd9690c3e283362e
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Loss_Effects/LossFilter.cpp 'void LossFilter::processBlock' '__EOF__'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Loss_Effects/LossFilter.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
  104: void LossFilter::processBlock (AudioBuffer<float>& buffer)
  105: {
@@ -1125,7 +1125,7 @@ Plugin/Source/Processors/Loss_Effects/LossFilter.cpp @ 604372e4ffd9690c3e283362e
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py snippet Plugin/Source/Processors/Loss_Effects/AzimuthProc.cpp 'void AzimuthProc::setAzimuthAngle' '__EOF__'
 ```
 
-```output
+```cpp
 Plugin/Source/Processors/Loss_Effects/AzimuthProc.cpp @ 604372e4ffd9690c3e283362e4598cb43edbb475
   31: void AzimuthProc::setAzimuthAngle (float angleDeg, float tapeSpeedIps)
   32: {
@@ -1183,7 +1183,7 @@ So if you want to study the plugin in a linear way, the most faithful order is e
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py matches Notes/Continuous%20Time%20Considerations.md '^#|^##'
 ```
 
-```output
+```cpp
 Notes/Continuous%20Time%20Considerations.md @ 604372e4ffd9690c3e283362e4598cb43edbb475
    7: # Record head
   24: # Tape Magnetisation
@@ -1202,7 +1202,7 @@ Notes/Continuous%20Time%20Considerations.md @ 604372e4ffd9690c3e283362e4598cb43e
 python3 /home/runner/work/experiments/experiments/analog-tape-model-walkthrough/analog_tape_tools.py matches Paper/420_paper.tex '\\subsection\{Hysteresis\}|\\subsection\{Tape Bias\}|\\subsection\{Wow and Flutter\}|\\subsection\{Oversampling\}|\\subsection\{Play Head\}'
 ```
 
-```output
+```cpp
 Paper/420_paper.tex @ 604372e4ffd9690c3e283362e4598cb43edbb475
  255: \subsection{Play Head}
  318: \subsection{Hysteresis}
