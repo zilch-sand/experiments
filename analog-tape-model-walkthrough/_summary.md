@@ -1,0 +1,6 @@
+Exploring the [AnalogTapeModel](https://github.com/jatinchowdhury18/AnalogTapeModel) codebase, this experiment provides a reproducible, Python-powered walkthrough of its core audio DSP signal path, excluding GUI and plugin wrappers. Using Showboat, it narratively and programmatically extracts relevant code from a pinned commit, allowing readers familiar with DSP and Python to follow and verify the chain of audio transformations. The core processing is structured as a linear "wet" effects chain—input gain, filters, tone, compression, a hysteresis tape core, and artifact layers—combined in parallel with a latency-compensated dry path. The walkthrough characterizes the hysteresis solver as a single key stage amid various supporting components including wow/flutter modulation and head loss filtering, illustrating both conceptual flow and implementation detail. Showboat's snippet extraction ensures clarity and reproducibility without code bloat.
+
+**Key Takeaways:**
+- Signal path is a linear wet chain plus parallel dry path with latency compensation.
+- Hysteresis solver is central but surrounded by modulating and loss stages.
+- [Showboat](https://github.com/ultraviolet-simon/showboat) enables narrative and verifiable documentation via on-demand code snippet extraction.
