@@ -1,0 +1,13 @@
+[project]
+name = "wef-global-risks"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "bar-chart-race>=0.1.0",
+    "matplotlib>=3.10.8",
+    "pandas>=3.0.1",
+    "pillow>=12.1.1",
+    "pymupdf>=1.27.2.2",
+]
