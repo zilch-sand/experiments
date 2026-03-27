@@ -29,8 +29,14 @@ The WEF surveys ~1,000+ experts annually, asking them to rank 30-50 global risks
 - [Long-term rankings 2007-2026](output/full_timeline_long_term.png)
 
 ### Animated Versions
-- [Short-term animated](output/short_term_animated.gif)
-- [Long-term animated](output/long_term_animated.gif)
+- [Short-term animated bump chart](output/short_term_animated.gif)
+- [Long-term animated bump chart](output/long_term_animated.gif)
+
+### Animated Ranked Lists (Bar Chart Race Style)
+Smooth transitions showing all 32-34 risks sliding between rank positions as years change. Bar widths are proportional to rank (top-ranked risks get wider bars).
+
+![Short-term ranked list animation](output/ranked_list_short_term.gif)
+![Long-term ranked list animation](output/ranked_list_long_term.gif)
 
 ### Full Rankings (All 33 Risks, 2023-2026)
 From 2023 onward, the WEF reports rank all ~33 surveyed risks (not just a top 10). These bump charts show the complete picture:

@@ -64,8 +64,10 @@ Analyzed all 16 WEF Global Risk Reports (2007-2026) to create animated rank char
 - `output/long_term_top10_2018_2026.png` - Modern era long-term (top 10)
 - `output/full_ranking_short_term.png` - ALL 32-34 risks, short-term (2023-2026)
 - `output/full_ranking_long_term.png` - ALL 32-34 risks, long-term (2023-2026)
-- `output/short_term_animated.gif` - Animated short-term
-- `output/long_term_animated.gif` - Animated long-term
+- `output/short_term_animated.gif` - Animated bump chart (short-term top 10)
+- `output/long_term_animated.gif` - Animated bump chart (long-term top 10)
+- `output/ranked_list_short_term.gif` - Bar chart race animation, all risks, short-term
+- `output/ranked_list_long_term.gif` - Bar chart race animation, all risks, long-term
 - `output/materialization_analysis.png` - Did predictions come true?
 - `output/likelihood_top5_2007_2017.png` - Historical likelihood top 5
 - `output/impact_top5_2007_2017.png` - Historical impact top 5

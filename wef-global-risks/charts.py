@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.patches as mpatches
 import numpy as np
+from collections import defaultdict
 from pathlib import Path
 
 from data import (
@@ -865,6 +866,222 @@ def create_full_timeline_chart(ranking_type="short"):
     print(f"Saved {fname}")
 
 
+def create_animated_ranked_list(ranking_type="short"):
+    """Create a bar-chart-race-style animated GIF of the full ranked risk list.
+
+    Bars slide smoothly between rank positions with rank-proportional widths
+    (top-ranked risks get wider bars, like a bar chart race).  Text labels ride
+    on the bars and rank numbers are only shown during keyframe holds so they
+    never conflict with the interpolated position.
+
+    Args:
+        ranking_type: "short" for 2-year severity, "long" for 10-year severity
+    """
+    data = TOP_SHORT_TERM if ranking_type == "short" else TOP_LONG_TERM
+    years = sorted(data.keys())
+
+    def norm(name):
+        return NORMALIZE.get(name, name)
+
+    max_rank = max(len(data[y]) for y in years)
+    # Risks not ranked in a year are placed well below the visible area
+    # so they slide in/out smoothly during transitions
+    off_screen = max_rank + 4
+
+    # ------------------------------------------------------------------
+    # Build tracks with collision-aware deduplication.
+    # Some distinct risks within the same year share a normalized name
+    # (e.g. "Failure to mitigate climate change" & "Failure of climate-
+    # change adaptation" both → "Climate change failure" in 2023).
+    # We detect these collisions and keep them as separate tracks keyed
+    # by raw name; non-colliding risks are tracked by normalized name.
+    # ------------------------------------------------------------------
+    collision_norms = set()
+    for year in years:
+        seen = set()
+        for risk in data[year]:
+            n = norm(risk)
+            if n in seen:
+                collision_norms.add(n)
+            seen.add(n)
+
+    # track_ranks[track_id][year] = 1-indexed rank
+    # track_meta[track_id]       = (display_name, color)
+    track_ranks = {}
+    track_meta  = {}
+
+    for year in years:
+        for rank, risk in enumerate(data[year], 1):
+            n = norm(risk)
+            tid = risk if n in collision_norms else n
+
+            if tid not in track_ranks:
+                track_ranks[tid] = {}
+            track_ranks[tid][year] = rank
+
+            # Always update display info to use the most-recent name
+            track_meta[tid] = (shorten_name(risk), get_color(risk))
+
+    all_tracks = sorted(track_ranks.keys())
+
+    # ------------------------------------------------------------------
+    # Animation timing (at 20 fps: ~0.9s hold per year, ~1.25s transition)
+    # ------------------------------------------------------------------
+    frames_per_transition = 25
+    hold_frames = 18
+
+    # Each entry: dict with keys t, year_from, year_to, is_hold
+    schedule = []
+    for i, year in enumerate(years):
+        for _ in range(hold_frames):
+            schedule.append(dict(t=0.0, year_from=year, year_to=year, is_hold=True))
+        if i < len(years) - 1:
+            next_year = years[i + 1]
+            for f in range(1, frames_per_transition + 1):
+                schedule.append(dict(
+                    t=f / frames_per_transition,
+                    year_from=year, year_to=next_year, is_hold=False,
+                ))
+    # extra hold at the very end
+    for _ in range(hold_frames):
+        schedule.append(dict(t=0.0, year_from=years[-1], year_to=years[-1], is_hold=True))
+
+    def ease(t):
+        """Smooth-step ease-in-out."""
+        return t * t * (3.0 - 2.0 * t)
+
+    def bar_width(rank):
+        """Bar width proportional to rank: 0.92 for #1, tapering to 0.37 for the lowest rank."""
+        if rank > max_rank:
+            return 0.15
+        return 0.92 - (rank - 1) / max(max_rank - 1, 1) * 0.55
+
+    def get_state(tid, frame):
+        """Return (position, width, alpha) for one track in one frame."""
+        y_from, y_to = frame['year_from'], frame['year_to']
+        t = ease(frame['t'])
+
+        r_from = track_ranks[tid].get(y_from, off_screen)
+        r_to   = track_ranks[tid].get(y_to,   off_screen)
+
+        pos   = r_from * (1.0 - t) + r_to * t
+        width = bar_width(r_from) * (1.0 - t) + bar_width(r_to) * t
+
+        # Alpha: full for risks present in both years, fade for entering/leaving
+        on_from = r_from <= max_rank
+        on_to   = r_to   <= max_rank
+        if on_from and on_to:
+            alpha = 1.0
+        elif on_from:
+            alpha = 1.0 - t        # fading out
+        elif on_to:
+            alpha = t               # fading in
+        else:
+            alpha = 0.0
+
+        return pos, width, alpha
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
+    fig_height = max_rank * 0.36 + 2.2
+    fig, ax = plt.subplots(figsize=(12, fig_height))
+    bg = '#f7f7f7'
+    fig.patch.set_facecolor(bg)
+
+    bar_height = 0.74
+
+    if ranking_type == "short":
+        title = "WEF Global Risks — Short-Term Severity (2 years)"
+        fname = "ranked_list_short_term.gif"
+    else:
+        title = "WEF Global Risks — Long-Term Severity (10 years)"
+        fname = "ranked_list_long_term.gif"
+
+    def draw_frame(frame_idx):
+        ax.clear()
+        ax.set_facecolor(bg)
+        frame = schedule[frame_idx]
+        is_hold = frame['is_hold']
+        y_from  = frame['year_from']
+        y_to    = frame['year_to']
+
+        # Gather visible items
+        items = []
+        for tid in all_tracks:
+            pos, width, alpha = get_state(tid, frame)
+            if alpha > 0.02 and pos < off_screen - 1:
+                items.append((pos, tid, width, alpha))
+
+        # Draw bottom-of-screen items first; top items last (painter's algorithm)
+        items.sort(reverse=True)
+
+        for pos, tid, width, alpha in items:
+            label, color = track_meta[tid]
+
+            # z-order: use destination rank so rising bars overtake falling ones
+            dest_rank = track_ranks[tid].get(y_to, off_screen)
+            z = 100 + int(max_rank + 1 - dest_rank)
+
+            ax.barh(pos, width, height=bar_height, color=color,
+                    alpha=min(alpha, 1.0), zorder=z)
+
+            # Build label text
+            if is_hold:
+                int_rank = track_ranks[tid].get(y_to, '?')
+                text = f"{int_rank}. {label}"
+            else:
+                text = f"  {label}"
+
+            ax.text(0.015, pos, text,
+                    va='center', ha='left', fontsize=7.5,
+                    fontweight='bold', color='white',
+                    alpha=min(alpha, 1.0), zorder=z + 1)
+
+        # Large year watermark
+        ax.text(0.97, 0.04, str(y_to),
+                transform=ax.transAxes, fontsize=44, fontweight='bold',
+                color='#dddddd', ha='right', va='bottom', zorder=1)
+
+        # Top-10 demarcation line
+        ax.axhline(y=10.5, color='#999999', linewidth=0.7, linestyle='--',
+                    alpha=0.30, zorder=1)
+        ax.text(0.97, 10.5, 'Top 10 ▲', fontsize=6.5, color='#999999',
+                alpha=0.45, ha='right', va='bottom',
+                transform=ax.get_yaxis_transform())
+
+        # Axes
+        ax.set_xlim(0, 1)
+        ax.set_ylim(max_rank + 0.9, 0.15)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(title, fontsize=13, fontweight='bold', pad=10)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+
+        # Category legend
+        legend_handles = [mpatches.Patch(color=c, label=cat)
+                         for cat, c in CATEGORY_COLORS.items()]
+        ax.legend(handles=legend_handles, loc='lower right', fontsize=7.5,
+                 framealpha=0.9, edgecolor='#cccccc', ncol=1,
+                 bbox_to_anchor=(1.0, 0.0))
+
+    # ------------------------------------------------------------------
+    # Render
+    # ------------------------------------------------------------------
+    anim = animation.FuncAnimation(
+        fig, draw_frame, frames=len(schedule),
+        interval=50, repeat=True, repeat_delay=2500,
+    )
+
+    total = len(schedule)
+    print(f"  Rendering {fname} ({total} frames)...")
+    anim.save(OUTPUT_DIR / fname, writer='pillow', fps=20, dpi=110,
+              savefig_kwargs={'facecolor': bg})
+    plt.close()
+    print(f"  Saved {fname}")
+
+
 if __name__ == "__main__":
     print("Creating WEF Global Risk Report visualizations...")
     print("=" * 60)
@@ -886,6 +1103,11 @@ if __name__ == "__main__":
     print("\n4. Creating full ranking bump charts (all risks)...")
     create_full_ranking_bump_chart("short")
     create_full_ranking_bump_chart("long")
+    
+    # 5. Animated ranked list (bar chart race style)
+    print("\n5. Creating animated ranked lists...")
+    create_animated_ranked_list("short")
+    create_animated_ranked_list("long")
     
     print("\n" + "=" * 60)
     print("All visualizations saved to output/")
