@@ -110,6 +110,44 @@ def shorten_name(name, max_len=35):
         "Rising greenhouse gas emissions": "GHG emissions",
         "Water supply crises": "Water crises",
         "Food shortage crises": "Food crises",
+        # Additional shortenings for ranks 11-34
+        "Ineffectiveness of multilateral institutions and international cooperation": "Multilateral failure",
+        "Collapse of a systemically important industry or supply chain": "Supply chain collapse",
+        "Disruptions to a systemically important supply chain": "Supply chain disruption",
+        "Severe mental health deterioration": "Mental health deterioration",
+        "Breakdown of critical information infrastructure": "IT infrastructure breakdown",
+        "State collapse or severe instability": "State collapse",
+        "Chronic diseases and health conditions": "Chronic diseases",
+        "Collapse or lack of public infrastructure and services": "Infrastructure failure",
+        "Insufficient public infrastructure and services": "Infrastructure failure",
+        "Insufficient public infrastructure and social protections": "Infrastructure failure",
+        "Proliferation of illicit economic activity": "Illicit economic activity",
+        "Digital inequality and lack of access to digital services": "Digital inequality",
+        "Adverse outcomes of frontier technologies": "Frontier tech risks",
+        "Failure to stabilize price trajectories": "Price instability",
+        "Use of weapons of mass destruction": "WMD use",
+        "Technological power concentration": "Tech power concentration",
+        "Disruptions to critical infrastructure": "Infrastructure disruption",
+        "Censorship and surveillance": "Censorship & surveillance",
+        "Erosion of human rights and/or of civic freedoms": "Erosion of human rights",
+        "Involuntary migration or displacement": "Involuntary migration",
+        "Biological, chemical or nuclear hazards": "CBRN hazards",
+        "Biological, chemical or nuclear weapons or hazards": "CBRN hazards",
+        "Non-weather related natural disasters": "Non-weather disasters",
+        "Concentration of strategic resources and technologies": "Strategic resource concentration",
+        "Lack of economic opportunity or unemployment": "Lack of economic opportunity",
+        "Talent and/or labour shortages": "Labour shortages",
+        "Crime and illicit economic activity": "Illicit economic activity",
+        "Decline in health and well-being": "Decline in health",
+        "Chronic health conditions": "Chronic health conditions",
+        "Illicit economic activity": "Illicit economic activity",
+        "Prolonged economic downturn": "Economic downturn",
+        "Asset bubble bursts": "Asset bubbles",
+        "Employment crises": "Employment crises",
+        "Debt crises": "Debt crises",
+        "Debt": "Debt",
+        "Intrastate violence": "Intrastate violence",
+        "Online harms": "Online harms",
     }
     return shorts.get(name, name[:max_len])
 
@@ -332,7 +370,7 @@ def create_methodology_aware_charts():
     for y in range(2018, 2022):
         rankings_10[y] = TOP_LIKELIHOOD[y][:10]
     for y in range(2023, 2027):
-        rankings_10[y] = TOP_SHORT_TERM[y]
+        rankings_10[y] = TOP_SHORT_TERM[y][:10]
     
     create_static_bump_chart(
         years=years_10,
@@ -377,7 +415,7 @@ def create_methodology_aware_charts():
         rankings_lt[y] = TOP_IMPACT[y][:10]
     rankings_lt[2022] = SEVERITY_10Y_2022
     for y in range(2023, 2027):
-        rankings_lt[y] = TOP_LONG_TERM[y]
+        rankings_lt[y] = TOP_LONG_TERM[y][:10]
     
     create_static_bump_chart(
         years=years_lt,
@@ -420,20 +458,20 @@ def create_materialization_chart():
     def norm(name):
         return NORMALIZE.get(name, name)
     
-    # Build normalized long-term top 10 by year
+    # Build normalized long-term top 10 by year (always top 10 for prediction tracking)
     lt_by_year = {}
     for y in range(2018, 2022):
         lt_by_year[y] = [norm(r) for r in TOP_IMPACT[y][:10]]
     lt_by_year[2022] = [norm(r) for r in SEVERITY_10Y_2022]
     for y in range(2023, 2027):
-        lt_by_year[y] = [norm(r) for r in TOP_LONG_TERM[y]]
+        lt_by_year[y] = [norm(r) for r in TOP_LONG_TERM[y][:10]]
     
-    # Build normalized short-term top 10 by year
+    # Build normalized short-term list by year (use top 10 for consistency)
     st_by_year = {}
     for y in range(2018, 2022):
         st_by_year[y] = [norm(r) for r in TOP_LIKELIHOOD[y][:10]]
     for y in range(2023, 2027):
-        st_by_year[y] = [norm(r) for r in TOP_SHORT_TERM[y]]
+        st_by_year[y] = [norm(r) for r in TOP_SHORT_TERM[y][:10]]
     
     # For each year's long-term list, check if those risks appeared in 
     # the short-term list within the next 2-5 years
@@ -527,13 +565,13 @@ def create_materialization_chart():
 
 
 def create_dual_panel_chart():
-    """Create a side-by-side chart showing short-term and long-term for latest year, 
-    similar to the 2026.png example."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10), sharey=True)
-    
+    """Create a side-by-side chart showing all short-term and long-term risks for 2026."""
     year = 2026
     short_risks = TOP_SHORT_TERM[year]
     long_risks = TOP_LONG_TERM[year]
+    max_rank = max(len(short_risks), len(long_risks))
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(22, max_rank * 0.4 + 2), sharey=True)
     
     for ax, risks, title in [(ax1, short_risks, f"Short Term (2 years)"),
                               (ax2, long_risks, f"Long Term (10 years)")]:
@@ -541,12 +579,12 @@ def create_dual_panel_chart():
             color = get_color(risk)
             short_name = shorten_name(risk)
             
-            ax.barh(rank, 0.8, color=color, alpha=0.8, height=0.6)
-            ax.text(0.05, rank, f"{rank}. {short_name}", va='center', fontsize=11,
+            ax.barh(rank, 0.8, color=color, alpha=0.85, height=0.7)
+            ax.text(0.05, rank, f"{rank}. {short_name}", va='center', fontsize=8.5,
                    fontweight='bold', color='white')
         
         ax.set_xlim(0, 1)
-        ax.set_ylim(10.5, 0.5)
+        ax.set_ylim(max_rank + 0.5, 0.5)
         ax.set_title(title, fontsize=14, fontweight='bold')
         ax.set_xticks([])
         ax.set_yticks([])
@@ -554,21 +592,129 @@ def create_dual_panel_chart():
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
+        
+        # Add a faint line at rank 10 to delineate top 10
+        ax.axhline(y=10.5, color='white', linewidth=1, alpha=0.5, linestyle='--')
     
-    fig.suptitle(f"WEF Global Risks Report {year}: Rankings by Severity", 
-                fontsize=16, fontweight='bold', y=0.98)
+    fig.suptitle(f"WEF Global Risks Report {year}: All {max_rank} Risks Ranked by Severity", 
+                fontsize=16, fontweight='bold', y=0.99)
     
     # Legend
     legend_handles = [mpatches.Patch(color=c, label=cat)
                      for cat, c in CATEGORY_COLORS.items()]
     fig.legend(handles=legend_handles, loc='lower center', ncol=5, fontsize=10,
-              framealpha=0.9, edgecolor='#cccccc', bbox_to_anchor=(0.5, 0.02))
+              framealpha=0.9, edgecolor='#cccccc', bbox_to_anchor=(0.5, 0.005))
     
-    plt.tight_layout(rect=[0, 0.06, 1, 0.96])
+    plt.tight_layout(rect=[0, 0.04, 1, 0.97])
     plt.savefig(OUTPUT_DIR / "dual_panel_2026.png", dpi=150, bbox_inches='tight',
                 facecolor='white')
     plt.close()
     print("Saved dual_panel_2026.png")
+
+
+def create_full_ranking_bump_chart(ranking_type="short"):
+    """Create a bump chart showing ALL risks (not just top 10) across 2023-2026.
+    
+    Args:
+        ranking_type: "short" for 2-year severity, "long" for 10-year severity
+    """
+    data = TOP_SHORT_TERM if ranking_type == "short" else TOP_LONG_TERM
+    years = sorted(data.keys())
+    
+    # Use normalized names for tracking
+    def norm(name):
+        return NORMALIZE.get(name, name)
+    
+    # Collect all normalized risk names across all years
+    all_norms = set()
+    for year in years:
+        for risk in data[year]:
+            all_norms.add(norm(risk))
+    
+    # Build positions for each normalized risk
+    risk_positions = {}  # norm_name -> {year: (rank, raw_name)}
+    for year in years:
+        for rank, risk in enumerate(data[year], 1):
+            n = norm(risk)
+            if n not in risk_positions:
+                risk_positions[n] = {}
+            risk_positions[n][year] = (rank, risk)
+    
+    max_rank = max(len(data[y]) for y in years)
+    
+    if ranking_type == "short":
+        title = "WEF Global Risks: All Risks by 2-Year Severity (2023-2026)"
+        subtitle = "Full ranking of all surveyed risks | Source: Global Risks Perception Survey"
+        fname = "full_ranking_short_term.png"
+    else:
+        title = "WEF Global Risks: All Risks by 10-Year Severity (2023-2026)"
+        subtitle = "Full ranking of all surveyed risks | Source: Global Risks Perception Survey"
+        fname = "full_ranking_long_term.png"
+    
+    fig, ax = plt.subplots(figsize=(16, max_rank * 0.45 + 3))
+    
+    for norm_name, positions in risk_positions.items():
+        sorted_yrs = sorted(positions.keys())
+        x_vals = sorted_yrs
+        y_vals = [positions[y][0] for y in sorted_yrs]
+        
+        latest_risk = positions[sorted_yrs[-1]][1]
+        color = get_color(latest_risk)
+        short_name = shorten_name(latest_risk)
+        
+        # Draw line
+        ax.plot(x_vals, y_vals, '-o', color=color, linewidth=1.8,
+                markersize=6, markeredgecolor='white', markeredgewidth=0.8,
+                zorder=3, alpha=0.75)
+        
+        # Label at last year
+        last_year = sorted_yrs[-1]
+        last_rank = positions[last_year][0]
+        ax.annotate(short_name, (last_year, last_rank),
+                   xytext=(8, 0), textcoords='offset points',
+                   fontsize=6.5, va='center', color=color, fontweight='bold')
+        
+        # Label at first year
+        first_year = sorted_yrs[0]
+        first_rank = positions[first_year][0]
+        if len(sorted_yrs) > 1:
+            ax.annotate(short_name, (first_year, first_rank),
+                       xytext=(-8, 0), textcoords='offset points',
+                       fontsize=6.5, va='center', ha='right', color=color, fontweight='bold')
+    
+    # Add top 10 demarcation
+    ax.axhline(y=10.5, color='red', linewidth=0.8, alpha=0.4, linestyle='--')
+    ax.text(years[0] - 0.3, 10.5, 'Top 10', fontsize=7, color='red', alpha=0.6,
+           ha='right', va='center')
+    
+    ax.set_xlim(min(years) - 2.5, max(years) + 5)
+    ax.set_ylim(max_rank + 0.5, 0.5)
+    ax.set_yticks(range(1, max_rank + 1))
+    ax.set_yticklabels([f"#{i}" for i in range(1, max_rank + 1)], fontsize=8)
+    ax.set_xticks(years)
+    ax.set_xticklabels([str(y) for y in years], fontsize=11)
+    
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    ax.text(0.5, 1.01, subtitle, transform=ax.transAxes,
+            fontsize=9, ha='center', va='bottom', style='italic', color='#666666')
+    
+    ax.grid(axis='y', alpha=0.15, linestyle='-')
+    ax.grid(axis='x', alpha=0.1, linestyle='-')
+    ax.set_axisbelow(True)
+    
+    legend_handles = [mpatches.Patch(color=c, label=cat)
+                     for cat, c in CATEGORY_COLORS.items()]
+    ax.legend(handles=legend_handles, loc='lower right', fontsize=9,
+             framealpha=0.9, edgecolor='#cccccc')
+    
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / fname, dpi=150, bbox_inches='tight',
+                facecolor='white', edgecolor='none')
+    plt.close()
+    print(f"Saved {fname}")
 
 
 def create_full_timeline_chart(ranking_type="short"):
@@ -583,7 +729,7 @@ def create_full_timeline_chart(ranking_type="short"):
         for y in range(2007, 2022):
             rankings[y] = TOP_LIKELIHOOD[y]
         for y in range(2023, 2027):
-            rankings[y] = TOP_SHORT_TERM[y]
+            rankings[y] = TOP_SHORT_TERM[y][:10]
         title = "WEF Global Risks: Short-Term Risk Rankings (2007-2026)"
         subtitle = ("Top 5 by Likelihood (2007-2017) → Top 10 by Likelihood (2018-2021) "
                    "→ Top 10 by 2-year Severity (2023-2026)\n"
@@ -597,7 +743,7 @@ def create_full_timeline_chart(ranking_type="short"):
             rankings[y] = TOP_IMPACT[y]
         rankings[2022] = SEVERITY_10Y_2022
         for y in range(2023, 2027):
-            rankings[y] = TOP_LONG_TERM[y]
+            rankings[y] = TOP_LONG_TERM[y][:10]
         title = "WEF Global Risks: Long-Term Risk Rankings (2007-2026)"
         subtitle = ("Top 5 by Impact (2007-2017) → Top 10 by Impact (2018-2021) "
                    "→ Top 10 by 10-year Severity (2022-2026)\n"
@@ -723,18 +869,23 @@ if __name__ == "__main__":
     print("Creating WEF Global Risk Report visualizations...")
     print("=" * 60)
     
-    # 1. Full timeline charts
+    # 1. Full timeline charts (top 10 across all years)
     print("\n1. Creating full timeline charts...")
     create_full_timeline_chart("short")
     create_full_timeline_chart("long")
     
-    # 2. Top 5 era charts (2007-2017)
+    # 2. Top 5 era charts (2007-2017) + methodology-aware charts
     print("\n2. Creating Top 5 era charts (2007-2017)...")
     create_methodology_aware_charts()
     
-    # 3. Dual panel for 2026
+    # 3. Dual panel for 2026 (all ranks)
     print("\n3. Creating dual panel chart for 2026...")
     create_dual_panel_chart()
+    
+    # 4. Full ranking bump charts (all 32-34 risks, 2023-2026)
+    print("\n4. Creating full ranking bump charts (all risks)...")
+    create_full_ranking_bump_chart("short")
+    create_full_ranking_bump_chart("long")
     
     print("\n" + "=" * 60)
     print("All visualizations saved to output/")

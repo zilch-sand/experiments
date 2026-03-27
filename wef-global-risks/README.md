@@ -32,6 +32,15 @@ The WEF surveys ~1,000+ experts annually, asking them to rank 30-50 global risks
 - [Short-term animated](output/short_term_animated.gif)
 - [Long-term animated](output/long_term_animated.gif)
 
+### Full Rankings (All 33 Risks, 2023-2026)
+From 2023 onward, the WEF reports rank all ~33 surveyed risks (not just a top 10). These bump charts show the complete picture:
+
+![Full ranking short-term](output/full_ranking_short_term.png)
+![Full ranking long-term](output/full_ranking_long_term.png)
+
+### 2026 Dual Panel (All Ranks)
+![2026 dual panel](output/dual_panel_2026.png)
+
 ## ⚠ Methodology Discontinuity
 
 The WEF changed its survey methodology in 2022, creating a break in the time series:
@@ -41,7 +50,7 @@ The WEF changed its survey methodology in 2022, creating a break in the time ser
 | 2007-2017 | Likelihood (10yr horizon) | Impact (10yr horizon) | Top 5 |
 | 2018-2021 | Likelihood (10yr horizon) | Impact (10yr horizon) | Top 10 |
 | 2022 | *Not published* | Severity (10yr) | Top 10 |
-| 2023-2026 | Severity (2yr horizon) | Severity (10yr horizon) | Top 10 |
+| 2023-2026 | Severity (2yr horizon) | Severity (10yr horizon) | All 32-34 risks |
 
 **Pre-2022**: Two independent dimensions — "How likely?" and "How impactful?"  
 **Post-2022**: One combined dimension — "How severe?" — over two time horizons  

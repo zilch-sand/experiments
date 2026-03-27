@@ -5,7 +5,8 @@ Analyzed all 16 WEF Global Risk Reports (2007-2026) to create animated rank char
 
 ## Data extraction approach
 - Used the 2017 report's "Evolving Risks Landscape 2007-2017" figure (Figure 2) as the primary source for historical data (2007-2017 top 5 by likelihood and impact)
-- Extracted top 10 rankings from individual reports for 2018-2026
+- Extracted top 10 rankings from individual reports for 2018-2021
+- For 2023-2026: extracted COMPLETE rankings of all 32-34 surveyed risks (not just top 10) from the detailed figures in each report (Figure E in 2023/2024, Figure G in 2025, Figure 10 in 2026)
 - Used PyMuPDF to extract text from PDFs, but much of the ranking data is in figures/charts that don't extract cleanly as text, so I cross-referenced multiple pages and the text descriptions
 
 ## Methodology changes discovered
@@ -57,13 +58,15 @@ Analyzed all 16 WEF Global Risk Reports (2007-2026) to create animated rank char
 - Showboat walkthrough in `walkthrough.md`
 
 ## Files produced
-- `output/full_timeline_short_term.png` - 20-year short-term rankings
-- `output/full_timeline_long_term.png` - 20-year long-term rankings
-- `output/short_term_top10_2018_2026.png` - Modern era short-term
-- `output/long_term_top10_2018_2026.png` - Modern era long-term
+- `output/full_timeline_short_term.png` - 20-year short-term rankings (top 10)
+- `output/full_timeline_long_term.png` - 20-year long-term rankings (top 10)
+- `output/short_term_top10_2018_2026.png` - Modern era short-term (top 10)
+- `output/long_term_top10_2018_2026.png` - Modern era long-term (top 10)
+- `output/full_ranking_short_term.png` - ALL 32-34 risks, short-term (2023-2026)
+- `output/full_ranking_long_term.png` - ALL 32-34 risks, long-term (2023-2026)
 - `output/short_term_animated.gif` - Animated short-term
 - `output/long_term_animated.gif` - Animated long-term
 - `output/materialization_analysis.png` - Did predictions come true?
 - `output/likelihood_top5_2007_2017.png` - Historical likelihood top 5
 - `output/impact_top5_2007_2017.png` - Historical impact top 5
-- `output/dual_panel_2026.png` - 2026 side-by-side view
+- `output/dual_panel_2026.png` - 2026 side-by-side view (all 33 ranks)
