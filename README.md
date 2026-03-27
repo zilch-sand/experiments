@@ -169,7 +169,11 @@ for dirname, _ in subdirs_with_dates:
             readme_path.write_text('\n'.join(new_lines))
 
 ]]]-->
-## 9 research projects
+## 10 research projects
+
+### [wef-global-risks](https://github.com/zilch-sand/experiments/tree/main/wef-global-risks) (2026-03-27)
+
+*No description available.*
 
 ### [analog-tape-model-walkthrough](https://github.com/zilch-sand/experiments/tree/main/analog-tape-model-walkthrough) (2026-03-09)
 
