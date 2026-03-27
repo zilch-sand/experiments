@@ -100,6 +100,7 @@ RISK_CATEGORIES = {
     "Interstate armed conflict": "Geopolitical",
     "State-based armed conflict": "Geopolitical",
     "Geopolitical conflict": "Geopolitical",
+    "Middle East instability": "Geopolitical",
     "Failed and failing states": "Geopolitical",
     "State collapse or crisis": "Geopolitical",
     "Failure of national governance": "Geopolitical",
@@ -203,7 +204,7 @@ TOP_LIKELIHOOD = {
         "Asset price collapse",
         "Climate change",
         "Geopolitical conflict",
-        "Asset price collapse",  # note: duplicate in source, likely "Oil price spike"
+        "Oil price spike",
         "Extreme energy price volatility",
     ],
     2011: [
@@ -306,14 +307,6 @@ TOP_LIKELIHOOD = {
     ],
 }
 
-# Fix 2010 - the source had a duplicate; based on the actual 2010 report landscape
-TOP_LIKELIHOOD[2010] = [
-    "Asset price collapse",
-    "Climate change",
-    "Geopolitical conflict",
-    "Oil price spike",
-    "Extreme energy price volatility",
-]
 
 
 # Top 5 by Impact - from the 2017 report's "Evolving Risks Landscape" figure
@@ -328,52 +321,52 @@ TOP_IMPACT = {
     ],
     2008: [
         "Asset price collapse",
-        "Retrenchment from globalization",
+        "Geopolitical conflict",  # "Middle East instability" in source
+        "Failed and failing states",
         "Oil and gas price spike",
-        "Slowing Chinese economy",
-        "Global governance failure",
+        "Chronic disease",
     ],
     2009: [
         "Asset price collapse",
-        "Retrenchment from globalization",
+        "Slowing Chinese economy",
         "Chronic disease",
-        "Fiscal crises",
-        "Global governance failure",
+        "Global governance failure",  # "Global governance gaps" in source
+        "Retrenchment from globalization",
     ],
     2010: [
         "Asset price collapse",
-        "Climate change",  # storms and cyclones = climate in the source
-        "Geopolitical conflict",  # "corruption" in source, but mapped to conflict
-        "Biodiversity loss",
-        "Extreme energy price volatility",
+        "Slowing Chinese economy",
+        "Chronic disease",
+        "Fiscal crises",
+        "Global governance failure",  # "Global governance gaps" in source
     ],
     2011: [
-        "Fiscal crises",
+        "Extreme weather events",  # "Storms and cyclones" in source
+        "Natural disasters",  # "Flooding" in source
+        "Geopolitical conflict",  # "Corruption" in source — a governance risk, mapped here for simplicity
+        "Biodiversity loss",
         "Climate change",
-        "Geopolitical conflict",
-        "Asset price collapse",
-        "Extreme volatility in energy and agriculture prices",
     ],
     2012: [
-        "Major systemic financial failure",
-        "Water supply crises",
-        "Food shortage crises",
+        "Severe income disparity",
         "Chronic fiscal imbalances",
-        "Extreme volatility in energy and agriculture prices",
+        "Rising greenhouse gas emissions",
+        "Cyber attacks",
+        "Water supply crises",
     ],
     2013: [
-        "Major systemic financial failure",
-        "Water supply crises",
+        "Severe income disparity",
         "Chronic fiscal imbalances",
-        "Diffusion of weapons of mass destruction",
-        "Climate change",
+        "Rising greenhouse gas emissions",
+        "Water supply crises",
+        "Mismanagement of population ageing",
     ],
     2014: [
-        "Fiscal crises",
-        "Climate change",
-        "Water crises",
+        "Income disparity",
+        "Extreme weather events",
         "Unemployment or underemployment",
-        "Critical information infrastructure breakdown",
+        "Climate change",
+        "Cyber attacks",
     ],
     2015: [
         "Water crises",
@@ -648,6 +641,7 @@ NORMALIZE = {
     "Interstate armed conflict": "Interstate conflict",
     "State-based armed conflict": "Interstate conflict",
     "Geopolitical conflict": "Interstate conflict",
+    "Middle East instability": "Interstate conflict",
     "Failed and failing states": "State collapse",
     "State collapse or crisis": "State collapse",
     "Failure of national governance": "Governance failure",
