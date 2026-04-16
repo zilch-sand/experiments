@@ -27,3 +27,4 @@
 - Ran requested helper-tool checks:
   - `uvx showboat --help` works.
   - `uvx rodney --help` works.
+- Addressed validation feedback by pinning/scoping `sample-dashboard-app/requirements.txt` versions for reproducibility.
